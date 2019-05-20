@@ -21,7 +21,7 @@ To use it, you can just type:
 
 tasm6801 file1 [file2 [file3 ...]]
 
-This will read the files (in order), compile, and output a listing file (file1.lst), an object file (file1.obj) and a MC-10 cassette (file1.c10) file.   Most MC-10 emulators can load a .c10 file into memory.  By default, the origin address is used as the execution address by MICROCOLOR BASIC's EXEC command.  If you wish to change it, you may use an additional directive, *.execstart*, to inidcate the execution start address.
+This will read the files (in order), compile, and output a listing file (file1.lst), an object file (file1.obj) and a MC-10 cassette (file1.c10) file.   Most MC-10 emulators can load a .c10 file into memory.  By default, the origin address is used as the execution address by MICROCOLOR BASIC's EXEC command.  If you wish to change it, you may use an additional directive, *.execstart*, to indicate the execution start address.
  
 If you are a user of the Virtual MC-10 you can load the .obj into memory at your preferred address. 
 
