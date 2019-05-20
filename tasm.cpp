@@ -22,7 +22,7 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
                          /*88*/"EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
                          /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB",0};
 
-const char *directives[]={".msfirst",".org",".end",".equ",".module",".byte",".word",".fill",0};
+const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".byte",".word",".fill",0};
 
 void tasm::writeByte(int b)
 {
@@ -159,7 +159,7 @@ void tasm::getorg(void) {
     fetcher.matchWhitespace();
     if (!fetcher.skipKeyword(directives))
        fetcher.die("\".org\" or \".equ\" expected");
-    if (strcasecmp(directives[fetcher.keyID],".equ"))
+    if (strcmp(directives[fetcher.keyID],".equ"))
        fetcher.die("\".equ\" expected");
  
     fetcher.skipWhitespace();
@@ -176,10 +176,10 @@ void tasm::getorg(void) {
   }
 
   if (fetcher.skipKeyword(directives))
-    if (fetcher.keyID == 0) {
+    if (!strcmp(directives[fetcher.keyID],".msfirst")) {
       fetcher.colnum = 0;
       return;
-    } else if (fetcher.keyID == 1) {
+    } else if (!strcmp(directives[fetcher.keyID],".org")) {
       fetcher.matchWhitespace();
       startpc = pc = getWord();
     } else
@@ -353,6 +353,14 @@ void tasm::doEnd(void) {
    endReached = true;
 }
 
+void tasm::doExecStart(void) {
+   if (execstart)
+      fetcher.die("EXEC address cannot be reset.  (previous address = $%x)",execstart);
+
+   execstart = pc;
+   fetcher.matcheol();
+}
+
 void tasm::doModule(void) {
    char n;
    char *m = modulename;
@@ -369,6 +377,8 @@ void tasm::doModule(void) {
 void tasm::doDirective(void) {
    if (!strcmp(directives[fetcher.keyID],".module"))
       doModule();
+   else if (!strcmp(directives[fetcher.keyID],".execstart"))
+      doExecStart();
    else if (!strcmp(directives[fetcher.keyID],".end"))
       doEnd();
    else if (!strcmp(directives[fetcher.keyID],".fill"))
@@ -449,6 +459,7 @@ void tasm::process(void) {
 
 void tasm::failReference(int endpc)
 {
+  logger.init();
   logger.write(archiver.lines, archiver.pc, startpc, endpc, binary, nbytes);
   exit(1);
 }
@@ -546,10 +557,10 @@ int tasm::execute(void) {
 
   resolveReferences();
 
+  logger.init();
   logger.write(archiver.lines, archiver.pc, startpc, pc, binary, nbytes);
-  FILE *lp = fopen("tasm.obj","w");
-  fwrite(binary,1,nbytes,lp);
-  fclose(lp);
+  logger.write(binary,nbytes);
+  logger.write(binary,nbytes,startpc,execstart);
 
   return 0;
 }

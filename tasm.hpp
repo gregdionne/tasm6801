@@ -15,6 +15,7 @@ public:
   tasm(int argc, char *argv[]) : fetcher(argc, argv), logger(argc,argv) {
      nbytes = 0; 
      pc = 0; 
+     execstart = 0;
      endReached = false;
      *labelname = *modulename = '\0';
   }
@@ -54,6 +55,7 @@ private:
   void doByte(void);
   void doWord(void);
   void doEnd(void);
+  void doExecStart(void);
   void doModule(void);
   void doDirective(void);
 
@@ -75,6 +77,7 @@ private:
   int nbytes;
   int pc;
   int startpc;
+  int execstart;
   int endReached;
 };
 

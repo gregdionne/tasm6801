@@ -7,8 +7,21 @@
 #include <string.h>
 
 void log::init() {
-  if (!(flog=fopen("tasm.log","w"))) {
-     fprintf(stderr,"Couldn't open logfile.\n");
+  std::string filename = argv[1];
+  std::string head = filename.substr(0, filename.rfind("."));
+  filename = head + ".lst";
+  if (!(flist=fopen(filename.c_str(),"w"))) {
+     fprintf(stderr,"Couldn't open list file.\n");
+     exit(1);
+  }
+  filename = head + ".obj";
+  if (!(fobj=fopen(filename.c_str(),"w"))) {
+     fprintf(stderr,"Couldn't open object file.\n");
+     exit(1);
+  }
+  filename = head + ".c10";
+  if (!(fc10=fopen(filename.c_str(),"w"))) {
+     fprintf(stderr,"Couldn't open object file.\n");
      exit(1);
   }
 }
@@ -28,7 +41,7 @@ void log::finish(std::string line)
    while (n<24)
       output[n++] = ' ';
    output[n] = '\0';
-   fprintf(flog,"%s%s",output,line.c_str());
+   fprintf(flist,"%s%s",output,line.c_str());
 }
 
 void log::write(std::vector<std::string>& lines,
@@ -91,5 +104,100 @@ void log::write(std::vector<std::string>& lines,
          finish(lines[n]);
       }
    }
+
+   fclose(flist);
 }
-      
+
+// .obj writer
+void log::write(unsigned char *binary, size_t nbytes)
+{
+  fwrite(binary,1,nbytes,fobj);
+  fclose(fobj);
+}
+
+// .c10 writer
+void log::write(unsigned char *binary, size_t nbytes, int load_addr, int exec_addr)
+{
+   if (!exec_addr)
+      exec_addr = load_addr;
+
+   spitleader();
+   filenameblock(argv[1],exec_addr,load_addr);
+
+   spitleader();
+
+   while (nbytes > 0) {
+     int bufcnt = nbytes<256 ? nbytes : 255;
+     datablock(binary, bufcnt);
+     binary += bufcnt;
+     nbytes -= bufcnt;
+   }
+
+   eofblock();
+}
+
+void log::putchar(char c)
+{
+    fputc(c, fc10);
+}
+
+void log::putchk(char c)
+{
+    putchar(c);
+    chksum += c;
+}
+
+void log::spitleader()
+{
+   for (int i=0; i<128; i++)
+     putchar(0x55);
+}
+
+void log::spitblock(unsigned char *buf, int buflen, int blocktype)
+{
+   putchar(0x55);   // magic1
+   putchar(0x3c);   // magic2
+   chksum = 0;
+   putchk(blocktype);   // data block type
+   putchk(buflen); // data length
+   for (int i=0; i<buflen; i++)
+     putchk(buf[i]);
+   putchar(chksum & 0xff); // checksum
+   putchar(0x55); // end of block
+}
+
+void log::filenameblock(char *filearg, int start_addr, int load_addr)
+{
+   int i;
+   unsigned char buf[15];
+   std::string filename = filearg;
+   std::string head = filename.substr(0,filename.rfind("."));
+
+   const char *fname = head.c_str();
+   for (i=0; i<strlen(fname) && i<8; i++) 
+     buf[i] = toupper(fname[i]);
+   for (; i<8; i++)
+     buf[i] = ' ';
+
+   buf[i++] = 0x02; // Machine language
+   buf[i++] = 0x00; // continuous gap flag
+   buf[i++] = 0x00; // continuous gap flag
+
+   buf[i++] = start_addr>>8;
+   buf[i++] = start_addr&0xff;
+
+   buf[i++] = load_addr>>8;
+   buf[i++] = load_addr&0xff;
+
+   spitblock(buf, i, 0x00);
+}
+
+void log::datablock(unsigned char *buf, int bufcnt)
+{
+   spitblock(buf, bufcnt, 0x01);
+}
+
+void log::eofblock()
+{
+   spitblock(NULL, 0, 0xff);
+}
