@@ -1,0 +1,69 @@
+temp1	.equ 32766
+temp2	.equ 32767
+	.org 32768       ;tell tasm to start at 32768
+
+	ldx #16384	 ;clear the screen
+	ldaa #32
+clrscn	staa ,x
+	inx
+	cpx #16895
+	bls clrscn
+
+;First, draw the keypad
+	clra			;a hold current char
+	ldx #16384+12+128	;start of keypad
+drwrow	ldab #8			;b holds column count
+drwnxt	staa ,x			;write char to screen
+	inca			;get next char
+	inx			;bump screen pointer
+	cmpa #64		;see if done
+	beq  drwent		;draw the enter key if done
+	cmpa #27		;see if gone past 'Z' 
+	bne  drmore		;keep going
+	ldx  #16384+12+128+128	;otherwise, load next row
+	ldaa #48		;set char to '0' (ascii 48)
+	bra  drwrow		;draw next row
+drmore	decb			;decrement column count
+	bne  drwnxt		;go if not done with column
+	ldab #24		;otherwise, bump screen pointer by 24
+	abx			
+	bra drwrow		;draw next row
+drwent	ldaa #31		;char for "<-" symbol
+	staa 16384+12+128+96+6	;store in "enter" location
+
+;Now highlight keys as they are pressed
+keylite	ldx #16384+12+128	;start of keypad
+	ldaa #1			;start with bit 0
+	staa temp1		;temp1 = which bit to mask  (0-5)
+	staa temp2		;temp2 = which bit to check (0-7)
+nxlite	ldaa temp2
+	coma			;flip the bits
+	staa 2			;store in keystrobe
+	ldaa 49151		;get the key group
+	ldab ,x			;get the current screen char
+	bita temp1		;check the key against the current one to inspect
+	beq hilite		;hilite if pressed.
+	andb #%00111111		;otherwise de-highlight it
+	bra mklite		
+hilite	orab #%01000000		;set the hilight bit of the char
+mklite	stab ,x			;write char to screen
+	inx			;bump screen pointer
+	lsl temp2		;inspect next bit
+	bcc nxlite		;go if not done
+	rol temp2		;store bit back at bit0.
+	ldab #24		;bump screen pointer by 24
+	abx
+	ldab temp1		;bump mask to next bit
+	lslb
+	stab temp1
+	cmpb #%01000000		;see if no more keys left
+	bne nxlite
+	
+	ldaa #%11111011 	; check break key
+	staa 2
+	ldaa 3	
+	bita #%00000010
+	bne keylite		; keep hilighting keys until break pressed.
+	rts
+
+	.end

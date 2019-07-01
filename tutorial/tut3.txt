@@ -1,0 +1,18 @@
+    .org 32768  ; tell tasm to start compilation at location 32768
+    
+    ldaa #65    ; load A with value 65 (ascii for 'A')
+    ldx #16384  ; load X with value 16384 (start of screen)
+    ldab #160   ; load B with value 160 = 5*32
+    abx         ; X = 16384 + 5*32 = 16544 = 5 columns down.
+    staa ,x     ; store 'A' at location.
+    ldab #02    ; B = 2
+    aba         ; A = A+B = 65+2 = 67 (ascii for 'C')
+    staa 1,x    ; store letter 'C' to next location
+    ldd  #1000  ; load D with value 0 (A=0, B=0)
+    addd #64537 ; D = 1000 + 64537 = 65537 -> rolls through to 1
+    std  2,x    ; store D to next screen location '@' <-> 0 and 'a' <-> 1
+    rts         ; return (in this case to BASIC).
+
+   .end         ; tell tasm that we're finished.
+
+

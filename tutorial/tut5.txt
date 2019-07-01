@@ -1,0 +1,20 @@
+    .org 32768  ; tell tasm to start compilation at location 32768
+    
+    ldaa #69    ; load A with value 69 (ascii for 'E')
+    ldx  #16384 ; load X with value 16384 (start of screen)
+    ldab #160   ; B = 160 (=32 * 5)
+    abx         
+    staa ,x     ; store letter 'E' 5 lines down from first location.
+    ldab #04    ; B = 4
+    sba         ; A = A - B = 69-4 = 65 (ascii for 'A')
+    staa 1,x    ; store letter 'A' to next location
+    ldab #254   ; load B with value -2 (254)
+    sba         ; A = A + B = 65 - 254 = 65 - -2 = 67 (ascii for 'C')
+    staa 2,x    ; store 'C' to next screen location.
+    suba #-1    ; subtract -1 (= 255) from A
+    staa 3,x    ; write it to screen (A=68, ascii for 'D')
+    rts         ; return (in this case to BASIC).
+
+   .end         ; tell tasm that we're finished.
+
+

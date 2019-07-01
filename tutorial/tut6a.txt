@@ -1,0 +1,12 @@
+	.org 32768 ; tell tasm to start compilation at location 32768
+
+	ldx #16384 ; point x to start of screen
+again:	inc ,x     ; increment location on screen
+    	inx        ; increment x
+	cpx #16895 ; compare with end of screen
+	bls again  ; 
+	rts	   ; return from subroutine (to BASIC)
+
+	.end	   ; tell tasm that we're finished.
+
+

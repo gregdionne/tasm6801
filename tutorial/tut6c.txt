@@ -1,0 +1,18 @@
+	.org 32768  ; tell tasm to start compilation at location 32768
+
+	ldx  #16864 ; point x to one position after row above last cell
+next:	dex
+	ldaa   ,x   ; get screen data
+	staa 32,x   ; store one row down
+	cpx  #16384 ; compare with first screen position
+        bhi  next   ; go if bigger
+	ldaa #96    ; load space character
+again	staa ,x     ; store on screen
+        inx
+	cpx  #16416 ; compare with second row, first column
+        blo  again  ; go until we're there
+	rts	    ; return from subroutine (to BASIC)
+
+	.end	    ; tell tasm that we're finished.
+
+

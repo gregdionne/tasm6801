@@ -1,0 +1,30 @@
+	.org 32768     ;tell tasm to start at 32768
+
+	ldx  #16384    ;load x with value 16384 (start of screen)
+again1:	ldaa ,x        ;get the value from address pointed by x
+	anda #%00111111;mask off the upper bits
+	staa ,x        ;store back to address pointed by x
+	inx            ;increment x
+	cpx  #16896    ;compare result with end of screen
+	bne  again1    ;branch if not equal
+	rts
+
+	ldx  #16384    ;load x with address of top of screen.
+again2:	ldaa ,x        ;get contents of x
+	oraa #%01000000;set the bit for dark-on-light green.
+	staa ,x        ;store back to address
+	inx            ;increment x
+	cpx  #16896    ;compare result with end of screen
+	bne  again2    ;branch if not equal
+	rts
+
+	ldx  #16384    ;load x with address of top of screen.
+again3:	ldaa ,x        ;get contents of x
+	eora #%01000000;flip the bit for dark-on-light green.
+	staa ,x        ;store back to address
+	inx            ;increment x
+	cpx  #16896    ;compare result with end of screen
+	bne  again3    ;branch if not equal
+	rts
+
+	.end           ; tell tasm we're done.

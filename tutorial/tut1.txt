@@ -1,0 +1,17 @@
+    .org 32768  ; tell tasm to start compilation at location 32768
+    
+    ldaa #72    ; load A with value 72
+    ldab #73    ; load B with value 73
+    staa 16384  ; store A into memory location 16384
+    stab 16385  ; store B into memory location 16385
+    ldx  16384  ; load X with data from address 16384-5
+    stx  16894  ; store X at bottom of screen
+    ldx  #16384 ; load X with the value 16384
+    ldab  ,x    ; load B with data from the address pointed to by X   (16384)
+    ldaa 1,x    ; load A with the data from address pointed to by X+1 (16385)
+    std  5,x    ; store D (which consists of A and B) to address X+5  (16389)
+    rts         ; return (in this case to BASIC).
+
+   .end         ; tell tasm that we're finished.
+
+

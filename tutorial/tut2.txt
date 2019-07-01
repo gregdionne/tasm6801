@@ -1,0 +1,21 @@
+    .org 32768  ; tell tasm to start compilation at location 32768
+    
+    ldaa #65    ; load A with value 65 (ascii for 'A')
+    ldx #16384  ; load X with value 16384 (start of screen)
+    staa ,x     ; store letter 'A' into first location.
+    inca        ; A = 66 (ascii for 'B')
+    inx         ; X = 16385
+    staa ,x     ; store letter 'B' to next
+    inca        ; A = 67 (ascii for 'C')
+    inx         ; X = 16386
+    staa ,x     ; store letter 'C' to next location
+    ldaa #0     ; load A with value 0.
+    deca        ; decrement A, since it is 0, it will roll back to 255.
+    staa 1,x    ; store A to next screen location
+    staa 2,x    ; store A again to the next screen location.
+    inc  2,x    ; directly increment the contents of the last location 
+    rts         ; return (in this case to BASIC).
+
+   .end         ; tell tasm that we're finished.
+
+

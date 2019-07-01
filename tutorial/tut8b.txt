@@ -1,0 +1,23 @@
+temp	.equ 32766
+	.org 32768	;tell tasm to start at 32768
+
+	ldaa #112	;put MC10 into low res graphics mode
+	staa 49151	;
+	ldd  #8193	;1024 bytes * 8 bits/byte + 1 carry bit
+	std  temp	;store into temp location
+rstart	ldx  #16384	;start of screen
+	ldd  #1024	;1024 bytes for this mode
+again	ror  ,x		;rotate right with carry
+	inx		;move to next screen position
+	decb		;decrement lower byte of count
+	bne again	;branch if not done yet
+	deca		;decrement upper byte of count
+	bne again	;branch if not done yet
+	ldx temp	;decrement temp counter
+	dex
+	stx temp
+	bne rstart
+	clr 49151	;restore SG4 graphics mode
+	rts
+
+	.end

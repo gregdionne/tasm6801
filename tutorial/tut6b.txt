@@ -1,0 +1,21 @@
+	.org 32768  ; tell tasm to start compilation at location 32768
+
+again:	ldx  #16384 ; point x to start of screen
+	ldab #1     ; set b flag to true
+nxtpos:	ldaa  ,x    ; get screen data
+	cmpa 1,x    ; compare with next screen data
+	bls noswap  ; already less than or equal -- don't swap
+        ldab 1,x    ; swap contents of x and x+1
+        staa 1,x    ;
+        stab  ,x    ;
+        ldab #0     ; set b to zero if we made a swap
+noswap:	inx	    ; increment screen pointer
+	cpx  #16894 ; compare with next to last screen position
+        bls  nxtpos ; go to nextpos if not yet reached
+        cmpb #0     ; is b zero?  
+        beq  again  ; yes, try again until we're completely sorted
+	rts	    ; return from subroutine (to BASIC)
+
+	.end	    ; tell tasm that we're finished.
+
+
