@@ -11,6 +11,7 @@ std::string catlabel(const char *modulename, const char *labelname)
 label::label(const char *modulename, const char *labelname) 
 {
    name = catlabel(modulename, labelname);
+   isdirty = false;
 }
 
 bool crtable::findlabel(std::string name, int &i)
