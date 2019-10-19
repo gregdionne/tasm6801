@@ -233,6 +233,16 @@ static int isbdigit(int c)
    return c=='0' || c=='1';
 }
 
+static int isqdigit(int c)
+{
+   return '0' <= c && c <= '3';
+}
+
+static int isodigit(int c)
+{
+   return '0' <= c && c <= '7';
+}
+
 static int digit(int c)
 {
    return c-'0';
@@ -273,6 +283,16 @@ bool fetch::isBinaryByte(void)
    return isNumber(isbdigit, digit,   2, 0xff);
 }
 
+bool fetch::isQuaternaryByte(void)
+{
+   return isNumber(isqdigit,  digit,  4, 0xff);
+}
+
+bool fetch::isOctalByte(void)
+{
+   return isNumber(isodigit,  digit,  8, 0xff);
+}
+
 bool fetch::isDecimalByte(void)
 {
    return isNumber(isdigit,  digit,  10, 0xff);
@@ -286,6 +306,11 @@ bool fetch::isHexadecimalByte(void)
 bool fetch::isBinaryWord(void)
 {
    return isNumber(isbdigit, digit,   2, 0xffff);
+}
+
+bool fetch::isQuaternaryWord(void)
+{
+   return isNumber(isqdigit, digit,   4, 0xffff);
 }
 
 bool fetch::isDecimalWord(void)
@@ -330,6 +355,21 @@ int fetch::getBinaryWord(void)
    return getNumber(isbdigit, digit, 2, 0xffff, "binary digit expected");
 } 
 
+int fetch::getQuaternaryByte(void)
+{
+   return getNumber(isqdigit, digit, 4, 0xff, "quaternary digit expected");
+}
+
+int fetch::getQuaternaryWord(void)
+{
+   return getNumber(isqdigit, digit, 4, 0xffff, "quaternary digit expected");
+}
+
+int fetch::getOctalByte(void)
+{
+   return getNumber(isodigit, digit, 8, 0xff, "octal digit expected");
+}
+
 int fetch::getDecimalByte(void)
 {
    return getNumber(isdigit, digit, 10, 0xff, "decimal digit expected");
@@ -349,3 +389,32 @@ int fetch::getHexadecimalWord(void)
 {
    return getNumber(isxdigit, xdigit, 16, 0xffff, "hexdecimal digit expected");
 } 
+
+int fetch::getQuotedLiteral(void)
+{
+   if (skipChar('\\')) {
+      int c = getChar();
+      if (c == '0' && c <= '3') {
+         int savecol = colnum;
+         int n = digit(c);
+         if (isodigit(peekChar())) {
+             n = 8*n + digit(getChar());
+             if (isodigit(peekChar())) {
+                c = 8*n + digit(getChar());
+                savecol = colnum;
+             }
+         }
+         colnum = savecol;
+      } else {
+         c = c == 'n' ? '\n' :
+             c == 'r' ? '\r' :
+             c == 't' ? '\t' :
+             c == 'b' ? '\b' :
+                        c;
+      }
+      return c;
+   } else {
+      return getChar();
+   }
+}
+

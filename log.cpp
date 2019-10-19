@@ -38,10 +38,30 @@ void log::initline(int n, int pc)
 void log::finish(std::string line)
 {
    int n = strlen(output);
-   while (n<24)
+   while (n<24) // 32 is arguably better
       output[n++] = ' ';
    output[n] = '\0';
    fprintf(flist,"%s%s",output,line.c_str());
+}
+
+void log::writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here)
+{
+   while (remaining && count) {
+     --remaining;
+     --count;
+     ++here;
+     sprintf(scratch,fmt,binary[byte++]);
+     strcat(output,scratch);
+   }
+   finish(line);
+}
+
+void log::writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here)
+{
+   while (remaining) {
+      initline(n+1,here);
+      writeFmt(8, "%02X", "\n", remaining, binary, byte, here);
+   }
 }
 
 void log::write(std::vector<std::string>& lines,
@@ -65,40 +85,27 @@ void log::write(std::vector<std::string>& lines,
       if (n<pc.size()-1) {
          int there = pc[n+1];
          if (there > endpc) {
+            fprintf(stderr,"internal error:\n");
             fprintf(stderr,"line %i: %04X %s",n+1,pc[n],lines[n].c_str());
             return;
          }
+         
          int remaining = there - here;
-         if (remaining <= 4) {
-            while (remaining--) {
-               ++here;
-               sprintf(scratch,"%02X ",binary[byte++]);
-               strcat(output,scratch);
-            }
+         if (remaining<0)
+            remaining = 0;
+
+	 if (remaining>0 && pc[n] != here) {
             finish(lines[n]);
+            writeRemaining(n,remaining,binary,byte,here);
             continue;
+         }
+
+         if (remaining <= 4) {
+            writeFmt(4,"%02X ", lines[n], remaining, binary, byte, here);
 	 } else {
-            int count = 8;
-            while (remaining && count) {
-              --remaining;
-              --count;
-              ++here;
-              sprintf(scratch,"%02X",binary[byte++]);
-              strcat(output,scratch);
-            }
-            finish(lines[n]);
-            while (remaining) {
-               initline(n+1,here);
-               count = 8;
-               while (remaining && count) {
-                 --remaining;
-                 --count;
-                 ++here;
-                 sprintf(scratch,"%02X",binary[byte++]);
-                 strcat(output,scratch);
-               }
-               finish("\n");
-            }
+            // 6 preserves tab spacing at the expense of eight-byte block alignment
+            writeFmt(8, "%02X", lines[n], remaining, binary, byte, here);
+            writeRemaining(n,remaining,binary,byte,here);
          }
       } else {
          finish(lines[n]);

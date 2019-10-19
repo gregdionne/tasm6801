@@ -44,18 +44,25 @@ class fetch {
   bool skipKeyword(const char *keywords[]);
   bool isNumber(int (*id)(int),int (*d)(int), int m, int limit);
   bool isBinaryByte(void);
+  bool isQuaternaryByte(void);
+  bool isOctalByte(void);
   bool isDecimalByte(void);
   bool isHexadecimalByte(void);
   bool isBinaryWord(void);
+  bool isQuaternaryWord(void);
   bool isDecimalWord(void);
   bool isHexadecimalWord(void);
   int getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char *errmsg);
   int getBinaryByte(void);
   int getBinaryWord(void);
+  int getQuaternaryByte(void);
+  int getQuaternaryWord(void);
+  int getOctalByte(void);
   int getHexadecimalByte(void);
   int getHexadecimalWord(void);
   int getDecimalByte(void);
   int getDecimalWord(void);
+  int getQuotedLiteral(void);
 
 private:
   FILE *fp;

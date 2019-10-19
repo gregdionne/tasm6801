@@ -16,6 +16,8 @@ Supported directives are:
 *.byte*
 *.word*
 *.fill*
+*.text*
+*.block*
 
 To use it, you can just type:
 

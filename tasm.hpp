@@ -23,14 +23,17 @@ public:
   int execute(void);
 
 private:
+  void validateObj(void);
   void writeWord(int w);
   void writeByte(int b);
 
   bool isWord(void);
+  bool isPC(void);
   bool isLabelName(void);
   bool isMonomial(void);
 
   int getWord(void);
+  int getPC(void);
   void getLabelName(void);
   monomial getMonomial(void);
   reference getReference(int reftype);
@@ -51,12 +54,16 @@ private:
   void doAssembly(void);
 
   void doString(void);
+  void doBlock(void);
   void doFill(void);
+  void doText(void);
   void doByte(void);
   void doWord(void);
+  void doOrg(void);
   void doEnd(void);
   void doExecStart(void);
   void doModule(void);
+  void doMSFirst(void);
   void doDirective(void);
 
   void getLabel(void);

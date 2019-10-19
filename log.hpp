@@ -21,6 +21,8 @@ class log {
   void write(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
   void write(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
 private:
+  void writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here);
+  void writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here);
   void putchar(char c);
   void putchk(char c);
   void spitleader(void);

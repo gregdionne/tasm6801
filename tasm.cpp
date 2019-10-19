@@ -22,12 +22,29 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
                          /*88*/"EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
                          /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB",0};
 
-const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".byte",".word",".fill",0};
+const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".byte",".word",".fill",".block",0};
+
+void tasm::validateObj()
+{
+   if (!nbytes)
+      startpc = pc;
+   else {
+      int bytesMissing = pc - (startpc + nbytes);
+      if (bytesMissing < 0) 
+         fetcher.die("object binary pc ($%04X) out of sync with pc ($%04X)",startpc+nbytes,pc);
+      else if (bytesMissing > 0) {
+         while (bytesMissing--)
+            binary[nbytes++] = 0;
+      }
+   }
+}
 
 void tasm::writeByte(int b)
 {
    if (b<-128 || b>255) 
       fetcher.die("result %i is out of range of a byte",b);
+
+   validateObj();
 
    b &= 0xff;
    binary[nbytes++] = b;
@@ -38,6 +55,8 @@ void tasm::writeWord(int w)
 {
    if (w < -32768 || w > 65535) 
       fetcher.die("result %i is out of range of a word",w);
+
+   validateObj();
 
    w &= 0xffff;
    binary[nbytes++] = w>>8;
@@ -57,6 +76,23 @@ bool tasm::isWord(void) {
           fetcher.isDecimalWord();
 }
 
+int tasm::getPC(void) {
+   if (!fetcher.skipChar('*'))
+      fetcher.matchChar('$');
+   return pc;
+}
+
+bool tasm::isPC(void) {
+   int savecol = fetcher.colnum;
+   if (fetcher.skipChar('*') || fetcher.skipChar('$')) {
+      fetcher.skipWhitespace();
+      bool flag = fetcher.isBinaryWord() || fetcher.isHexadecimalWord() || fetcher.isDecimalWord();
+      fetcher.colnum = savecol;
+      return !flag;
+   }
+   return false; 
+}
+
 bool tasm::isLabelName(void) {
    return fetcher.isAlpha() || fetcher.isChar('_');
 }
@@ -71,7 +107,7 @@ void tasm::getLabelName(void) {
 }
 
 bool tasm::isMonomial() {
-   return fetcher.isChar('+') || fetcher.isChar('-') || isLabelName() || isWord();
+   return fetcher.isChar('+') || fetcher.isChar('-') || fetcher.isChar('\'') || isLabelName() || isPC() || isWord();
 }
 
 monomial tasm::getMonomial() {
@@ -84,7 +120,12 @@ monomial tasm::getMonomial() {
                       fetcher.skipChar('-') ? -1 :
                                                1;
       fetcher.skipWhitespace();
-      if (isWord()) {
+      if (fetcher.skipChar('\'')) {
+         m.multiplier *= fetcher.getQuotedLiteral();
+         fetcher.matchChar('\'');
+      } else if (isPC()) {
+         m.multiplier *= getPC();
+      } else if (isWord()) {
          m.multiplier *= getWord();
       } else if (isLabelName()) {
          getLabelName();
@@ -153,6 +194,8 @@ int tasm::getRelativeExpression(void) {
 }
 
 void tasm::getorg(void) {
+  stripComment();
+  fetcher.expandTabs(8);
 
   if (isLabelName()) {
     getLabel();
@@ -181,7 +224,8 @@ void tasm::getorg(void) {
       return;
     } else if (!strcmp(directives[fetcher.keyID],".org")) {
       fetcher.matchWhitespace();
-      startpc = pc = getWord();
+      pc = getWord();
+      archiver.pc.end()[-1] = pc;
     } else
       fetcher.die("unexpected or unsupported directive");
   else
@@ -306,6 +350,16 @@ void tasm::doAssembly(void) {
    }
 }
 
+void tasm::doBlock(void) {
+   fetcher.matchWhitespace();
+   int repeat;
+   std::string offender;
+   if (!getReferenceNow(repeat, offender))
+      fetcher.die(".block argument must be immediately resolvable");
+   fetcher.matcheol();
+   pc += repeat;
+}
+
 void tasm::doFill(void) {
    fetcher.matchWhitespace();
    int repeat;
@@ -327,13 +381,25 @@ void tasm::doFill(void) {
    fetcher.matcheol();
 }
 
+void tasm::doText(void) {
+   fetcher.matchWhitespace();
+   fetcher.matchChar('"');
+   while (!fetcher.skipChar('"') && !fetcher.iseol())
+      writeByte(fetcher.getQuotedLiteral());
+
+   fetcher.matcheol();
+}
+
 void tasm::doByte(void) {
    fetcher.matchWhitespace();
    do {
      if (fetcher.skipChar('"'))
        while (!fetcher.skipChar('"') && !fetcher.iseol())
           writeByte(fetcher.getChar());
-     else
+     else if (fetcher.skipChar('\'')) {
+          writeByte(fetcher.getQuotedLiteral());
+          fetcher.matchChar('\'');
+     } else
         writeByte(getExpression(1));
      fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
@@ -361,6 +427,14 @@ void tasm::doExecStart(void) {
    fetcher.matcheol();
 }
 
+void tasm::doOrg(void) {
+   fetcher.matchWhitespace();
+   pc = getWord();
+   fetcher.matcheol();
+   archiver.pc.end()[-1] = pc;
+}
+
+
 void tasm::doModule(void) {
    char n;
    char *m = modulename;
@@ -374,6 +448,10 @@ void tasm::doModule(void) {
    fetcher.matcheol();
 }
 
+void tasm::doMSFirst(void) {
+   fetcher.matcheol();
+}
+
 void tasm::doDirective(void) {
    if (!strcmp(directives[fetcher.keyID],".module"))
       doModule();
@@ -381,12 +459,20 @@ void tasm::doDirective(void) {
       doExecStart();
    else if (!strcmp(directives[fetcher.keyID],".end"))
       doEnd();
+   else if (!strcmp(directives[fetcher.keyID],".org"))
+      doOrg();
+   else if (!strcmp(directives[fetcher.keyID],".block"))
+      doBlock();
    else if (!strcmp(directives[fetcher.keyID],".fill"))
       doFill();
    else if (!strcmp(directives[fetcher.keyID],".byte"))
       doByte();
    else if (!strcmp(directives[fetcher.keyID],".word"))
       doWord();
+   else if (!strcmp(directives[fetcher.keyID],".text"))
+      doText();
+   else if (!strcmp(directives[fetcher.keyID],".msfirst"))
+      doMSFirst();
    else
       fetcher.die("unexpected directive");
 }
@@ -546,8 +632,8 @@ void tasm::resolveReferences(void) {
 
 int tasm::execute(void) {
   while (!pc && fetcher.getLine()) {
-    getorg();
     archiver.push_back(fetcher.peekLine(),pc);
+    getorg();
   }
 
   while (fetcher.getLine()) {
