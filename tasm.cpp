@@ -310,14 +310,22 @@ void tasm::doAssembly(void) {
       return;
    }
 
-   // get operand and indexed status
-   bool isIndexed = checkIndexed();
+   // is forced extended?
+   bool isForcedExtended = fetcher.skipChar('>');
+   bool isIndexed = false;
    int w = 0;
-   if (!isIndexed) {
-     w = getExpression(0);
-     fetcher.skipWhitespace();
-     isIndexed = checkIndexed();
-   } 
+
+   if (isForcedExtended) {
+      w = getExpression(0);
+   } else {
+      // get operand and indexed status
+      isIndexed = checkIndexed();
+      if (!isIndexed) {
+        w = getExpression(0);
+        fetcher.skipWhitespace();
+        isIndexed = checkIndexed();
+      }
+   }
    fetcher.matcheol();
 
    // indexed
@@ -337,7 +345,7 @@ void tasm::doAssembly(void) {
    } 
 
    // if resolvable to a byte...
-   if (-128 <= w && w < 256) {
+   if (!isForcedExtended && -128 <= w && w < 256) {
       // direct
       writeByte(opcode + (opcode < 0x80 ? 0x20 : 0x50));
       writeByte(w);
