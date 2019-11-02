@@ -6,7 +6,7 @@
 #include "log.hpp"
 #include <string.h>
 
-void log::init() {
+void Log::init() {
   std::string filename = argv[1];
   std::string head = filename.substr(0, filename.rfind("."));
   filename = head + ".lst";
@@ -30,12 +30,12 @@ void log::init() {
 static char output[1024];
 static char scratch[1024];
 
-void log::initline(int n, int pc)
+void Log::initline(int n, int pc)
 {
    sprintf(output,"%04i   %04X ",n,pc);
 }
 
-void log::finish(std::string line)
+void Log::finish(std::string line)
 {
    int n = strlen(output);
    while (n<24) // 32 is arguably better
@@ -44,7 +44,7 @@ void log::finish(std::string line)
    fprintf(flist,"%s%s",output,line.c_str());
 }
 
-void log::writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here)
+void Log::writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here)
 {
    while (remaining && count) {
      --remaining;
@@ -56,7 +56,7 @@ void log::writeFmt(int count, const char *fmt, std::string line, int& remaining,
    finish(line);
 }
 
-void log::writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here)
+void Log::writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here)
 {
    while (remaining) {
       initline(n+1,here);
@@ -64,12 +64,12 @@ void log::writeRemaining(int n, int& remaining, unsigned char binary[], int& byt
    }
 }
 
-void log::write(std::vector<std::string>& lines,
-                std::vector<int> pc,
-                int startpc,
-                int endpc,
-                unsigned char binary[],
-                int binsize)
+void Log::writeLst(std::vector<std::string>& lines,
+                   std::vector<int> pc,
+                   int startpc,
+                   int endpc,
+                   unsigned char binary[],
+                   int binsize)
 {
    int here = startpc;
    int byte = 0;
@@ -115,15 +115,13 @@ void log::write(std::vector<std::string>& lines,
    fclose(flist);
 }
 
-// .obj writer
-void log::write(unsigned char *binary, size_t nbytes)
+void Log::writeObj(unsigned char *binary, size_t nbytes)
 {
   fwrite(binary,1,nbytes,fobj);
   fclose(fobj);
 }
 
-// .c10 writer
-void log::write(unsigned char *binary, size_t nbytes, int load_addr, int exec_addr)
+void Log::writeC10(unsigned char *binary, size_t nbytes, int load_addr, int exec_addr)
 {
    if (!exec_addr)
       exec_addr = load_addr;
@@ -143,24 +141,24 @@ void log::write(unsigned char *binary, size_t nbytes, int load_addr, int exec_ad
    eofblock();
 }
 
-void log::putchar(char c)
+void Log::putchar(char c)
 {
     fputc(c, fc10);
 }
 
-void log::putchk(char c)
+void Log::putchk(char c)
 {
     putchar(c);
     chksum += c;
 }
 
-void log::spitleader()
+void Log::spitleader()
 {
    for (int i=0; i<128; i++)
      putchar(0x55);
 }
 
-void log::spitblock(unsigned char *buf, int buflen, int blocktype)
+void Log::spitblock(unsigned char *buf, int buflen, int blocktype)
 {
    putchar(0x55);   // magic1
    putchar(0x3c);   // magic2
@@ -173,7 +171,7 @@ void log::spitblock(unsigned char *buf, int buflen, int blocktype)
    putchar(0x55); // end of block
 }
 
-void log::filenameblock(char *filearg, int start_addr, int load_addr)
+void Log::filenameblock(char *filearg, int start_addr, int load_addr)
 {
    int i;
    unsigned char buf[15];
@@ -199,12 +197,12 @@ void log::filenameblock(char *filearg, int start_addr, int load_addr)
    spitblock(buf, i, 0x00);
 }
 
-void log::datablock(unsigned char *buf, int bufcnt)
+void Log::datablock(unsigned char *buf, int bufcnt)
 {
    spitblock(buf, bufcnt, 0x01);
 }
 
-void log::eofblock()
+void Log::eofblock()
 {
    spitblock(NULL, 0, 0xff);
 }

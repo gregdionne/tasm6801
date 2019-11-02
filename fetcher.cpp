@@ -1,13 +1,13 @@
 // Copyright (C) 2019 Greg Dionne
 // Distributed under MIT License
-#include "fetch.hpp"
+#include "fetcher.hpp"
 #include <stdio.h>  //f...
 #include <stdlib.h> //perror
 #include <string.h> //strlen
 #include <ctype.h>  //isxdigit
 #include <stdarg.h> //va_list, va_start
 
-void fetch::init(void)
+void Fetcher::init(void)
 {
    if (argc>1)
       openNext();
@@ -17,13 +17,13 @@ void fetch::init(void)
    }
 }
 
-void fetch::spitLine(void)
+void Fetcher::spitLine(void)
 {
   if (linenum && filecnt && filecnt<argc) 
     fprintf(stderr,"%s(%i): %s",argv[filecnt],linenum,buf);
 }
 
-void fetch::die(const char *formatstr, ...)
+void Fetcher::die(const char *formatstr, ...)
 {
    va_list vl;
    va_start(vl, formatstr);
@@ -40,7 +40,7 @@ void fetch::die(const char *formatstr, ...)
    exit(1);
 }
   
-bool fetch::openNext(void)
+bool Fetcher::openNext(void)
 {
   if (++filecnt<argc) {
     fp = fopen(argv[filecnt],"r");
@@ -55,7 +55,7 @@ bool fetch::openNext(void)
   }
 }
 
-char *fetch::getLine(void)
+char *Fetcher::getLine(void)
 {
   while (!fgets(buf, BUFSIZ, fp)) {
     fclose(fp);
@@ -72,7 +72,7 @@ char *fetch::getLine(void)
   return buf;
 }
 
-void fetch::expandTabs(char *b, int m, int n)
+void Fetcher::expandTabs(char *b, int m, int n)
 {
    int i=0;
    while (b[i] && b[i] != '\t')
@@ -91,18 +91,18 @@ void fetch::expandTabs(char *b, int m, int n)
      b[--m] = ' ';     
 }
 
-void fetch::expandTabs(int n)
+void Fetcher::expandTabs(int n)
 {
    expandTabs(buf, 0, n);
 }
 
-bool fetch::isWhitespace(void)
+bool Fetcher::isWhitespace(void)
 {
    char c=buf[colnum];
    return c==' ' || c == '\t';
 }
 
-bool fetch::skipWhitespace(void)
+bool Fetcher::skipWhitespace(void)
 {
    bool flag = isWhitespace();
    while (isWhitespace())
@@ -110,20 +110,20 @@ bool fetch::skipWhitespace(void)
    return flag;
 }
 
-void fetch::matchWhitespace(void)
+void Fetcher::matchWhitespace(void)
 {
    if (!isWhitespace())
      die("whitespace expected");
    skipWhitespace();
 }
 
-bool fetch::iseol(void)
+bool Fetcher::iseol(void)
 {
    char c = buf[colnum];
    return c=='\n' || c=='\r' || c=='\0';
 }
 
-bool fetch::isBlankLine(void)
+bool Fetcher::isBlankLine(void)
 {
    int savecol = colnum;
    skipWhitespace();
@@ -132,26 +132,26 @@ bool fetch::isBlankLine(void)
    return isblank;
 }
 
-void fetch::matcheol(void)
+void Fetcher::matcheol(void)
 {
    skipWhitespace();
    if (!iseol())
       die("unexpected characters at end of line");
 }
 
-char fetch::prevChar(void)
+char Fetcher::prevChar(void)
 {
    if (colnum==0)
       die("internal error: prevChar() called at start of line");
    return buf[colnum-1];
 }
 
-char fetch::peekChar(void)
+char Fetcher::peekChar(void)
 {
    return buf[colnum];
 }
 
-bool fetch::skipChar(char c)
+bool Fetcher::skipChar(char c)
 {
    if (c!=buf[colnum])
       return false;
@@ -161,7 +161,7 @@ bool fetch::skipChar(char c)
    }
 }
 
-char fetch::getChar(void)
+char Fetcher::getChar(void)
 {
    char c = peekChar();
    if (!iseol())
@@ -169,13 +169,13 @@ char fetch::getChar(void)
    return c;
 }
      
-void fetch::ungetChar(void)
+void Fetcher::ungetChar(void)
 {
    if (colnum)
      --colnum;
 }
 
-void fetch::matchChar(char c)
+void Fetcher::matchChar(char c)
 {
    if (c != buf[colnum]) {
      die("\"%c\" expected",c);
@@ -183,32 +183,32 @@ void fetch::matchChar(char c)
    ++colnum;
 }
 
-bool fetch::isChar(char c)
+bool Fetcher::isChar(char c)
 {
    return c == buf[colnum];
 }
 
-bool fetch::isAlpha()
+bool Fetcher::isAlpha()
 {
    return isalpha(buf[colnum]);
 }
 
-bool fetch::isAlnum()
+bool Fetcher::isAlnum()
 {
    return isalnum(buf[colnum]);
 }
 
-char *fetch::peekLine(void)
+char *Fetcher::peekLine(void)
 {
    return &buf[colnum];
 }
 
-void fetch::advance(int n)
+void Fetcher::advance(int n)
 {
    colnum += n;
 }
 
-bool fetch::peekKeyword(const char *keywords[])
+bool Fetcher::peekKeyword(const char *keywords[])
 {
    for (int i=0; keywords[i]; i++)
      if (!strncasecmp(keywords[i],peekLine(),strlen(keywords[i]))) {
@@ -218,7 +218,7 @@ bool fetch::peekKeyword(const char *keywords[])
    return false;
 }
 
-bool fetch::skipKeyword(const char *keywords[])
+bool Fetcher::skipKeyword(const char *keywords[])
 {
    bool flag;   
 
@@ -255,7 +255,7 @@ static int xdigit(int c)
                                  digit(c);
 }
 
-bool fetch::isNumber(int (*id)(int),int (*d)(int), int m, int limit)
+bool Fetcher::isNumber(int (*id)(int),int (*d)(int), int m, int limit)
 {
    int saveColnum = colnum;
    int c = peekChar();
@@ -278,52 +278,52 @@ bool fetch::isNumber(int (*id)(int),int (*d)(int), int m, int limit)
    return true;
 }
 
-bool fetch::isBinaryByte(void)
+bool Fetcher::isBinaryByte(void)
 {
    return isNumber(isbdigit, digit,   2, 0xff);
 }
 
-bool fetch::isQuaternaryByte(void)
+bool Fetcher::isQuaternaryByte(void)
 {
    return isNumber(isqdigit,  digit,  4, 0xff);
 }
 
-bool fetch::isOctalByte(void)
+bool Fetcher::isOctalByte(void)
 {
    return isNumber(isodigit,  digit,  8, 0xff);
 }
 
-bool fetch::isDecimalByte(void)
+bool Fetcher::isDecimalByte(void)
 {
    return isNumber(isdigit,  digit,  10, 0xff);
 }
 
-bool fetch::isHexadecimalByte(void)
+bool Fetcher::isHexadecimalByte(void)
 {
    return isNumber(isxdigit,  digit,  10, 0xff);
 }
 
-bool fetch::isBinaryWord(void)
+bool Fetcher::isBinaryWord(void)
 {
    return isNumber(isbdigit, digit,   2, 0xffff);
 }
 
-bool fetch::isQuaternaryWord(void)
+bool Fetcher::isQuaternaryWord(void)
 {
    return isNumber(isqdigit, digit,   4, 0xffff);
 }
 
-bool fetch::isDecimalWord(void)
+bool Fetcher::isDecimalWord(void)
 {
    return isNumber(isdigit,  digit,  10, 0xffff);
 }
 
-bool fetch::isHexadecimalWord(void)
+bool Fetcher::isHexadecimalWord(void)
 {
   return isNumber(isxdigit, xdigit, 16, 0xffff);
 }
 
-int fetch::getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char* errmsg)
+int Fetcher::getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char* errmsg)
 {
    int c = peekChar();
    int x = 0;
@@ -345,52 +345,52 @@ int fetch::getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char*
    
    
 
-int fetch::getBinaryByte(void)
+int Fetcher::getBinaryByte(void)
 {
    return getNumber(isbdigit, digit, 2, 0xff, "binary digit expected");
 }
 
-int fetch::getBinaryWord(void)
+int Fetcher::getBinaryWord(void)
 {
    return getNumber(isbdigit, digit, 2, 0xffff, "binary digit expected");
 } 
 
-int fetch::getQuaternaryByte(void)
+int Fetcher::getQuaternaryByte(void)
 {
    return getNumber(isqdigit, digit, 4, 0xff, "quaternary digit expected");
 }
 
-int fetch::getQuaternaryWord(void)
+int Fetcher::getQuaternaryWord(void)
 {
    return getNumber(isqdigit, digit, 4, 0xffff, "quaternary digit expected");
 }
 
-int fetch::getOctalByte(void)
+int Fetcher::getOctalByte(void)
 {
    return getNumber(isodigit, digit, 8, 0xff, "octal digit expected");
 }
 
-int fetch::getDecimalByte(void)
+int Fetcher::getDecimalByte(void)
 {
    return getNumber(isdigit, digit, 10, 0xff, "decimal digit expected");
 } 
 
-int fetch::getDecimalWord(void)
+int Fetcher::getDecimalWord(void)
 {
    return getNumber(isdigit, digit, 10, 0xffff, "decimal digit expected");
 } 
 
-int fetch::getHexadecimalByte(void)
+int Fetcher::getHexadecimalByte(void)
 {
    return getNumber(isxdigit, xdigit, 16, 0xff, "hexadecimal digit expected");
 } 
 
-int fetch::getHexadecimalWord(void)
+int Fetcher::getHexadecimalWord(void)
 {
    return getNumber(isxdigit, xdigit, 16, 0xffff, "hexdecimal digit expected");
 } 
 
-int fetch::getQuotedLiteral(void)
+int Fetcher::getQuotedLiteral(void)
 {
    if (skipChar('\\')) {
       int c = getChar();

@@ -7,19 +7,19 @@
 #include <string>
 #include <vector>
 
-class log {
+class Log {
  public:
   int argc;
   char **argv;
-  log(int argc, char *argv[]) :
+  Log(int argc, char *argv[]) :
        argc(argc), argv(argv) {}
 
   void init(void);
   void initline(int n, int pc);
   void finish(std::string line);
-  void write(unsigned char *binary, size_t nbytes);
-  void write(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
-  void write(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
+  void writeObj(unsigned char *binary, size_t nbytes);
+  void writeC10(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
+  void writeLst(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
 private:
   void writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here);
   void writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here);

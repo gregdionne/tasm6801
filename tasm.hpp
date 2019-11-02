@@ -3,16 +3,16 @@
 #ifndef TASM_HPP
 #define TASM_HPP
 
-#include "fetch.hpp"
+#include "fetcher.hpp"
 #include "crtable.hpp"
 #include "log.hpp"
 #include "archive.hpp"
 
 #define MAXLABELLEN 100
 
-class tasm {
+class Tasm {
 public:
-  tasm(int argc, char *argv[]) : fetcher(argc, argv), logger(argc,argv) {
+  Tasm(int argc, char *argv[]) : fetcher(argc, argv), log(argc,argv) {
      nbytes = 0; 
      pc = 0; 
      execstart = 0;
@@ -27,30 +27,21 @@ private:
   void writeWord(int w);
   void writeByte(int b);
 
-  bool isWord(void);
-  bool isPC(void);
   bool isLabelName(void);
-  bool isMonomial(void);
-
-  int getWord(void);
-  int getPC(void);
   void getLabelName(void);
-  monomial getMonomial(void);
-  reference getReference(int reftype);
   int getLabelExpression(void);
-  int getExpression(int reftype);
-  void getLabelEquivalence(const char *labelname);
-  bool getReferenceNow(int &result, std::string &offender);
-  int getRelativeExpression(void);
 
-  void stripComment(void);
-
-  bool isIndexed(void);
-  bool isImmediate(void);
-  bool isExtended(void);
-  bool isDirect(void);
+  bool processInherent(int opcode);
+  bool processImmediate(int opcode);
+  bool processRelative(int opcode);
+  bool processForcedExtended(int opcode);
 
   bool checkIndexed(void);
+
+  void doIndexed(int opcode, int offset);
+  void doDirect(int opcode, int address);
+  void doExtended(int opcode, int address);
+
   void doAssembly(void);
 
   void doString(void);
@@ -66,18 +57,19 @@ private:
   void doMSFirst(void);
   void doDirective(void);
 
-  void getLabel(void);
+  void doEqu(const char *labelname);
   void doLabel(void);
 
+  void stripComment(void);
   void getorg(void);
   void process(void);
-  void failReference(int refloc);
   void resolveReferences(void);
+  void failReference(int refloc);
 
-  fetch fetcher;
-  crtable xref;
-  log logger;
-  archive archiver;
+  Fetcher fetcher;
+  CRTable xref;
+  Log log;
+  Archive archiver;
   unsigned char binary[65536];
   char modulename[MAXLABELLEN];
   char labelname[MAXLABELLEN];

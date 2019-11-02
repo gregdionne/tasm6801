@@ -1,6 +1,7 @@
 // Copyright (C) 2019 Greg Dionne
 // Distributed under MIT License
 #include "tasm.hpp"
+#include "string.h"
 
 const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP", "TPA",
                          /*08*/"INX","DEX","CLV","SEV", "CLC","SEC","CLI","SEI",
@@ -24,7 +25,7 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
 
 const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".byte",".word",".fill",".block",0};
 
-void tasm::validateObj()
+void Tasm::validateObj()
 {
    if (!nbytes)
       startpc = pc;
@@ -39,7 +40,7 @@ void tasm::validateObj()
    }
 }
 
-void tasm::writeByte(int b)
+void Tasm::writeByte(int b)
 {
    if (b<-128 || b>255) 
       fetcher.die("result %i is out of range of a byte",b);
@@ -51,7 +52,7 @@ void tasm::writeByte(int b)
    pc ++;
 }
 
-void tasm::writeWord(int w)
+void Tasm::writeWord(int w)
 {
    if (w < -32768 || w > 65535) 
       fetcher.die("result %i is out of range of a word",w);
@@ -64,192 +65,77 @@ void tasm::writeWord(int w)
    pc += 2;
 }
 
-int tasm::getWord(void) {
-  return fetcher.skipChar('%') ? fetcher.getBinaryWord() :
-         fetcher.skipChar('$') ? fetcher.getHexadecimalWord() :
-                                 fetcher.getDecimalWord();
-}
-
-bool tasm::isWord(void) {
-   return fetcher.isChar('%') ||
-          fetcher.isChar('$') ||
-          fetcher.isDecimalWord();
-}
-
-int tasm::getPC(void) {
-   if (!fetcher.skipChar('*'))
-      fetcher.matchChar('$');
-   return pc;
-}
-
-bool tasm::isPC(void) {
-   int savecol = fetcher.colnum;
-   if (fetcher.skipChar('*') || fetcher.skipChar('$')) {
-      fetcher.skipWhitespace();
-      bool flag = fetcher.isBinaryWord() || fetcher.isHexadecimalWord() || fetcher.isDecimalWord();
-      fetcher.colnum = savecol;
-      return !flag;
-   }
-   return false; 
-}
-
-bool tasm::isLabelName(void) {
+bool Tasm::isLabelName(void) {
    return fetcher.isAlpha() || fetcher.isChar('_');
 }
 
-void tasm::getLabelName(void) {
-   char *c = labelname;
-   if (!isLabelName())
-      fetcher.die("label expected");
-   while (fetcher.isChar('_') || fetcher.isAlnum())
-      *c++ = fetcher.getChar();
-   *c = '\0';
-}
-
-bool tasm::isMonomial() {
-   return fetcher.isChar('+') || fetcher.isChar('-') || fetcher.isChar('\'') || isLabelName() || isPC() || isWord();
-}
-
-monomial tasm::getMonomial() {
-   monomial m;
-   m.multiplier = 1;
-
-   do {
-      fetcher.skipWhitespace();
-      m.multiplier *= fetcher.skipChar('+') ?  1 :
-                      fetcher.skipChar('-') ? -1 :
-                                               1;
-      fetcher.skipWhitespace();
-      if (fetcher.skipChar('\'')) {
-         m.multiplier *= fetcher.getQuotedLiteral();
-         fetcher.matchChar('\'');
-      } else if (isPC()) {
-         m.multiplier *= getPC();
-      } else if (isWord()) {
-         m.multiplier *= getWord();
-      } else if (isLabelName()) {
-         getLabelName();
-         int value;
-         if (xref.resolve(catlabel(modulename, labelname), value))
-            m.multiplier *= value;
-         else if (m.name == "")
-            m.name = catlabel(modulename, labelname);
-         else
-            fetcher.die("multiplication requires at least one reference to be resolvable");
-      } else 
-          fetcher.die("unrecognized input");
-      fetcher.skipWhitespace();
-   } while (fetcher.skipChar('*'));
-   return m;
-}
-
-reference tasm::getReference(int reftype) {
-   reference r(pc, reftype);
-   do {
-      r.polynomial.push_back(getMonomial());
-      fetcher.skipWhitespace();
-   } while (fetcher.isChar('+') || fetcher.isChar('-'));
-   return r;
-}
-
-void tasm::getLabelEquivalence(const char *labelname) {
-   label l(modulename, labelname);
-   do {
-     l.polynomial.push_back(getMonomial());
-     fetcher.skipWhitespace();
-   } while (fetcher.isChar('+') || fetcher.isChar('-'));
-   xref.addlabel(l);
-}
-
-bool tasm::getReferenceNow(int& result, std::string &offender) {
-   reference r = getReference(-1);
-   return xref.resolve(r, result, offender);
-}
-  
-int tasm::getExpression(int reftype) {
-   reference r = getReference(reftype);
-   int result;
-   std::string offender;
-   if (xref.resolve(r, result, offender))
-      return result;
-   else {
-      xref.addreference(r);
-      return 0xdead; // return padding.
+void Tasm::getLabelName(void) {
+   int n = 0;
+   char *l = labelname;
+   while (fetcher.isAlnum() || fetcher.isChar('_')) {
+     *l++ = fetcher.getChar();
+     if (++n >= MAXLABELLEN)
+        fetcher.die("label has too many characters");
    }
+   *l = '\0';
 }
 
-int tasm::getRelativeExpression(void) {
-   reference r = getReference(0);
-   int result;
-   std::string offender;
-   if (xref.resolve(r, result, offender)) {
-      result -= pc + 2;
-      if (result < -128 || result > 127)
-         fetcher.die("branch destination out of reach");
-      return result;
-   } else {
-      xref.addreference(r);
-      return 0x00; // return padding.
+bool Tasm::processInherent(int opcode)
+{
+   if (opcode<0x20 || (opcode>0x2f && opcode<0x60)) {
+      writeByte(opcode);
+      return true;
+   } 
+
+   return false;
+}
+   
+bool Tasm::processImmediate(int opcode)
+{
+   if (fetcher.skipChar('#')) {
+      int nibble = opcode&0xf;
+
+      if (opcode < 0x70 || nibble==0x7 || nibble==0xd || nibble==0xf)
+         fetcher.die("instruction does not support immediate mode");
+
+      writeByte(opcode + (opcode<0x80 ? 0x10 : 0x40));
+
+      if (nibble==0x3 || nibble==0xc || nibble==0xe) 
+         writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1));
+      else
+         writeByte(xref.tentativelyResolve(1,fetcher,modulename,pc-1));
+
+      return true;
    }
+
+   return false;
 }
 
-void tasm::getorg(void) {
-  stripComment();
-  fetcher.expandTabs(8);
-
-  if (isLabelName()) {
-    getLabel();
-    fetcher.matchWhitespace();
-    if (!fetcher.skipKeyword(directives))
-       fetcher.die("\".org\" or \".equ\" expected");
-    if (strcmp(directives[fetcher.keyID],".equ"))
-       fetcher.die("\".equ\" expected");
- 
-    fetcher.skipWhitespace();
-    getLabelEquivalence(labelname);
-    fetcher.matcheol();
-    fetcher.colnum = 0;
-    return;
-  }
-
-  fetcher.skipWhitespace();
-  if (fetcher.iseol() || fetcher.isChar(';')) {
-    fetcher.colnum = 0;
-    return;
-  }
-
-  if (fetcher.skipKeyword(directives))
-    if (!strcmp(directives[fetcher.keyID],".msfirst")) {
-      fetcher.colnum = 0;
-      return;
-    } else if (!strcmp(directives[fetcher.keyID],".org")) {
-      fetcher.matchWhitespace();
-      pc = getWord();
-      archiver.pc.end()[-1] = pc;
-    } else
-      fetcher.die("unexpected or unsupported directive");
-  else
-    fetcher.die("assembly must start with \".org\" directive"); 
-  
-  fetcher.colnum = 0;
+bool Tasm::processRelative(int opcode)
+{
+   if (opcode < 0x30 || opcode == 0x90) {
+      opcode = opcode == 0x90 ? 0x8d : opcode; // handle BSR
+      writeByte(opcode);
+      writeByte(xref.tentativelyResolve(0,fetcher,modulename,pc-1));
+      return true;
+   }
+   return false;
 }
 
-void tasm::stripComment(void) {
-  bool squote = false;
-  bool dquote = false;
+bool Tasm::processForcedExtended(int opcode)
+{
+   if (fetcher.skipChar('>')) {
+      writeByte(opcode + (opcode<0x70 ? 0x10 :
+                          opcode<0x80 ? 0x40 :
+                                        0x70));
+      writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1));
+      return true;
+   }
 
-  for (char *c = fetcher.peekLine(); *c != '\n'; ++c) {
-    squote ^= !dquote && *c == '\'';
-    dquote ^= !squote && *c == '"';
-    if (!squote && !dquote && *c==';') {
-       *c++ = '\n';
-       *c = '\0';
-       return;
-    }
-  }
+   return false;
 }
 
-bool tasm::checkIndexed() {
+bool Tasm::checkIndexed() {
    if (!(fetcher.skipChar(',')))
       return false;
 
@@ -261,7 +147,26 @@ bool tasm::checkIndexed() {
    return true;
 }
 
-void tasm::doAssembly(void) {
+void Tasm::doIndexed(int opcode, int offset) {
+   writeByte(opcode + (opcode<0x70 ? 0x00 :
+                       opcode<0x80 ? 0x30 :
+                                     0x60));
+   writeByte(offset);
+}
+
+void Tasm::doDirect(int opcode, int address) {
+   writeByte(opcode + (opcode < 0x80 ? 0x20 : 0x50));
+   writeByte(address);
+}
+
+void Tasm::doExtended(int opcode, int address) {
+   writeByte(opcode + (opcode<0x70 ? 0x10 :
+                       opcode<0x80 ? 0x40 :
+                                     0x70));
+   writeWord(address);
+}
+
+void Tasm::doAssembly(void) {
    fetcher.skipWhitespace();
    if (!fetcher.skipKeyword(mnemonics))
       fetcher.die("assembly instruction expected");
@@ -276,110 +181,65 @@ void tasm::doAssembly(void) {
             opcode == 0x95 ? 0x58 :
                              opcode;
 
-   // inherent   
-   if (opcode<0x20 || (opcode>0x2f && opcode<0x60)) {
-      writeByte(opcode);
+   if (processInherent(opcode)) {
       fetcher.matcheol();
       return;
-   } 
+   }
 
    fetcher.matchWhitespace();
 
-   // immediate
-   if (fetcher.skipChar('#')) {
-      int nibble = opcode&0xf;
-      if (opcode < 0x70 || nibble==0x7 || nibble==0xd || nibble==0xf)
-         fetcher.die("instruction does not support immediate mode");
-      int w = getExpression(0);
-      writeByte(opcode + (opcode<0x80 ? 0x10 : 0x40));
-      if (nibble==0x3 || nibble==0xc || nibble==0xe)
-         writeWord(w);
-      else
-         writeByte(w);
+   if (processImmediate(opcode) ||
+       processRelative(opcode)  ||
+       processForcedExtended(opcode)) { 
       fetcher.matcheol();
       return;
    }
 
-   // relative branch
-   if (opcode < 0x30 || opcode == 0x90) {
-      opcode = opcode == 0x90 ? 0x8d : opcode; // handle BSR
-      int w = getRelativeExpression();
-      writeByte(opcode);
-      writeByte(w);
+   if (checkIndexed()) {
+      doIndexed(opcode, 0);
       fetcher.matcheol();
       return;
    }
 
-   // is forced extended?
-   bool isForcedExtended = fetcher.skipChar('>');
-   bool isIndexed = false;
-   int w = 0;
+   // tentatively get reference with two bytes
+   Reference r(pc, 2);
+   r.expression.parse(fetcher, modulename, pc);
+   fetcher.skipWhitespace();
 
-   if (isForcedExtended) {
-      w = getExpression(0);
+   if (checkIndexed()) {
+      r.reftype = 1; // only one byte required
+      doIndexed(opcode, xref.tentativelyResolve(r));
+      fetcher.matcheol();
+      return;
+   }
+
+   int address = xref.tentativelyResolve(r);
+
+   if (opcode < 0x70 || address < -128 || 255 < address) {
+      // 0xdead or other 16-bit address
+      doExtended(opcode, address);
    } else {
-      // get operand and indexed status
-      isIndexed = checkIndexed();
-      if (!isIndexed) {
-        w = getExpression(0);
-        fetcher.skipWhitespace();
-        isIndexed = checkIndexed();
-      }
+      // was immedately resolved to a single-byte address
+      doDirect(opcode, address);
    }
+
    fetcher.matcheol();
-
-   // indexed
-   if (isIndexed) {
-      writeByte(opcode + (opcode<0x70 ? 0x00 :
-                          opcode<0x80 ? 0x30 :
-                                        0x60));
-      writeByte(w);
-      return;
-   }
-
-   // force extended for single ops (inc, dec, etc.)
-   if (opcode < 0x70) {
-      writeByte(opcode + 0x10);
-      writeWord(w);
-      return;
-   } 
-
-   // if resolvable to a byte...
-   if (!isForcedExtended && -128 <= w && w < 256) {
-      // direct
-      writeByte(opcode + (opcode < 0x80 ? 0x20 : 0x50));
-      writeByte(w);
-   } else {
-      // force extended
-      writeByte(opcode + (opcode<0x70 ? 0x10 :
-                          opcode<0x80 ? 0x40 :
-                                        0x70));
-      writeWord(w);
-   }
+   return;
 }
 
-void tasm::doBlock(void) {
+void Tasm::doBlock(void) {
    fetcher.matchWhitespace();
-   int repeat;
-   std::string offender;
-   if (!getReferenceNow(repeat, offender))
-      fetcher.die(".block argument must be immediately resolvable");
+   pc += xref.immediatelyResolve(-1, fetcher, modulename, pc, ".block");
    fetcher.matcheol();
-   pc += repeat;
 }
 
-void tasm::doFill(void) {
+void Tasm::doFill(void) {
    fetcher.matchWhitespace();
-   int repeat;
-   std::string offender;
-   if (!getReferenceNow(repeat, offender))
-      fetcher.die(".fill argument must be immediately resolvable");
+   int repeat = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill");
    fetcher.skipWhitespace();
    if (fetcher.skipChar(',')) {
       fetcher.skipWhitespace();
-      int w;
-      if (!getReferenceNow(w, offender))
-         fetcher.die(".fill argument must be immediately resolvable");
+      int w = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill");
       while (repeat--)
         writeByte(w);
    } else {
@@ -389,7 +249,7 @@ void tasm::doFill(void) {
    fetcher.matcheol();
 }
 
-void tasm::doText(void) {
+void Tasm::doText(void) {
    fetcher.matchWhitespace();
    fetcher.matchChar('"');
    while (!fetcher.skipChar('"') && !fetcher.iseol())
@@ -398,7 +258,7 @@ void tasm::doText(void) {
    fetcher.matcheol();
 }
 
-void tasm::doByte(void) {
+void Tasm::doByte(void) {
    fetcher.matchWhitespace();
    do {
      if (fetcher.skipChar('"'))
@@ -408,26 +268,26 @@ void tasm::doByte(void) {
           writeByte(fetcher.getQuotedLiteral());
           fetcher.matchChar('\'');
      } else
-        writeByte(getExpression(1));
+        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
      fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
 }
 
-void tasm::doWord(void) {
+void Tasm::doWord(void) {
    fetcher.matchWhitespace();
    do {
-      writeWord(getExpression(2));
+      writeWord(xref.tentativelyResolve(-2,fetcher,modulename,pc));
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
 }
 
-void tasm::doEnd(void) {
+void Tasm::doEnd(void) {
    endReached = true;
 }
 
-void tasm::doExecStart(void) {
+void Tasm::doExecStart(void) {
    if (execstart)
       fetcher.die("EXEC address cannot be reset.  (previous address = $%x)",execstart);
 
@@ -435,15 +295,14 @@ void tasm::doExecStart(void) {
    fetcher.matcheol();
 }
 
-void tasm::doOrg(void) {
+void Tasm::doOrg(void) {
    fetcher.matchWhitespace();
-   pc = getWord();
+   archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org");
    fetcher.matcheol();
-   archiver.pc.end()[-1] = pc;
 }
 
 
-void tasm::doModule(void) {
+void Tasm::doModule(void) {
    char n;
    char *m = modulename;
    fetcher.matchWhitespace();
@@ -456,11 +315,11 @@ void tasm::doModule(void) {
    fetcher.matcheol();
 }
 
-void tasm::doMSFirst(void) {
+void Tasm::doMSFirst(void) {
    fetcher.matcheol();
 }
 
-void tasm::doDirective(void) {
+void Tasm::doDirective(void) {
    if (!strcmp(directives[fetcher.keyID],".module"))
       doModule();
    else if (!strcmp(directives[fetcher.keyID],".execstart"))
@@ -485,21 +344,14 @@ void tasm::doDirective(void) {
       fetcher.die("unexpected directive");
 }
 
-void tasm::getLabel(void) {
-   char c;
-   int n = 0;
-   char *l = labelname;
-   while (isalnum(c=fetcher.peekChar()) || c=='_') {
-     fetcher.matchChar(c);
-     *l++ = c;
-     if (++n >= MAXLABELLEN)
-        fetcher.die("label has too many characters");
-   }
-   *l = '\0';
+void Tasm::doEqu(const char *labelname) {
+   Label l(modulename, labelname);
+   l.expression.parse(fetcher, modulename, pc);
+   xref.addlabel(l);
 }
 
-void tasm::doLabel(void) {
-   getLabel();
+void Tasm::doLabel(void) {
+   getLabelName();
 
    if (fetcher.isBlankLine()) {
       xref.addlabel(modulename,labelname,pc);
@@ -518,7 +370,7 @@ void tasm::doLabel(void) {
    if (fetcher.skipKeyword(directives))
       if (!strcmp(directives[fetcher.keyID],".equ")) {
          fetcher.skipWhitespace();
-         getLabelEquivalence(labelname);
+         doEqu(labelname);
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".module")) {
          doModule();
@@ -533,7 +385,62 @@ void tasm::doLabel(void) {
    }
 }
 
-void tasm::process(void) {
+void Tasm::stripComment(void) {
+  bool squote = false;
+  bool dquote = false;
+
+  for (char *c = fetcher.peekLine(); *c != '\n'; ++c) {
+    squote ^= !dquote && *c == '\'';
+    dquote ^= !squote && *c == '"';
+    if (!squote && !dquote && *c==';') {
+       *c++ = '\n';
+       *c = '\0';
+       return;
+    }
+  }
+}
+
+void Tasm::getorg(void) {
+  stripComment();
+  fetcher.expandTabs(8);
+
+  if (isLabelName()) {
+    getLabelName();
+    fetcher.matchWhitespace();
+    if (!fetcher.skipKeyword(directives))
+       fetcher.die("\".org\" or \".equ\" expected");
+    if (strcmp(directives[fetcher.keyID],".equ"))
+       fetcher.die("\".equ\" expected");
+
+    fetcher.skipWhitespace();
+    doEqu(labelname);
+    fetcher.matcheol();
+    fetcher.colnum = 0;
+    return;
+  }
+
+  fetcher.skipWhitespace();
+  if (fetcher.iseol() || fetcher.isChar(';')) {
+    fetcher.colnum = 0;
+    return;
+  }
+
+  if (fetcher.skipKeyword(directives))
+    if (!strcmp(directives[fetcher.keyID],".msfirst")) {
+      fetcher.colnum = 0;
+      return;
+    } else if (!strcmp(directives[fetcher.keyID],".org")) {
+      fetcher.matchWhitespace();
+      archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org");
+    } else
+      fetcher.die("unexpected or unsupported directive");
+  else
+    fetcher.die("assembly must start with \".org\" directive");
+
+  fetcher.colnum = 0;
+}
+
+void Tasm::process(void) {
    stripComment();
    fetcher.expandTabs(8);
    if (endReached && !fetcher.isBlankLine())
@@ -551,94 +458,21 @@ void tasm::process(void) {
        doAssembly();
 }
 
-void tasm::failReference(int endpc)
+void Tasm::failReference(int endpc)
 {
-  logger.init();
-  logger.write(archiver.lines, archiver.pc, startpc, endpc, binary, nbytes);
+  log.init();
+  log.writeLst(archiver.lines, archiver.pc, startpc, endpc, binary, nbytes);
   exit(1);
 }
 
-void tasm::resolveReferences(void) {
-   for (int i=0; i<xref.references.size(); i++) {
-      reference &r = xref.references[i];
-      int result;
-      std::string offender;
-      if (!xref.resolve(r, result, offender))
-         fprintf(stderr,"label \"%s\" is unresolved at %04x\n",offender.c_str(),r.location);
-      if (r.reftype == 0) {
-         int refbyte = r.location - startpc;
-         if (refbyte < 0 || refbyte > nbytes) {
-            fprintf(stderr,"reference at %04x (%i)  is out of range of binary\n",r.location, result);
-            failReference(r.location);
-         }
-         int opcode = binary[refbyte];
-         if (opcode < 0x20 || (opcode >= 0x30 && opcode < 0x60)) {
-            fprintf(stderr,"internal error: reference at %04x with argument %i for an inherent instruction: %02x\n",
-                    r.location, result, opcode);
-            failReference(r.location);
-         } else if (opcode < 0x30 || opcode == 0x8d) {
-            result -= r.location + 2;
-            if (result < -128 || result > 127) {
-               fprintf(stderr,"branch destination %4x at %04x out of range\n",result + r.location + 1, r.location);
-               failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = result & 0xff;
-         } else if ((opcode & 0x30) == 0x20) {
-            if (result<0 || result>255) {
-               fprintf(stderr,"result %i for indexed instruction %02x at %04x is out of range 0-255\n",
-                       result, opcode, r.location);
-               failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = result & 0xff;
-         } else if ((opcode & 0x30) == 0x10) {
-            if (result<0 || result>255) {
-              fprintf(stderr,"result %i for direct instruction %02x at %04x is out of range 0-255\n",
-                      result, opcode, r.location);
-              failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = result & 0xff;
-         } else if ((opcode & 0x30) == 0x30) {
-            if (result < 0 || result > 65535) {
-               fprintf(stderr,"result %i for extended instruction %02x at %04x is out of range 0-65535\n",
-                       result, opcode, r.location);
-               failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = (result >> 8)  & 0xff;
-            binary[r.location - startpc + 2] = result & 0xff;
-         } else if ((opcode & 0xf) == 0x3 || (opcode & 0xf) == 0xC || (opcode & 0xf) == 0xE) {
-            if (result < -32768 || result > 65535) {
-               fprintf(stderr,"result %i for immediate instruction %02x at %04x is out of range [-32768,65535]\n",
-                       result, opcode, r.location);
-               failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = (result >> 8)  & 0xff;
-            binary[r.location - startpc + 2] = result & 0xff;
-         } else {
-            if (result < -128 || result > 255) {
-               fprintf(stderr,"result %i for immediate instruction %02x at %04x is out of range [-128,255]\n",
-                       result, opcode, r.location);
-               failReference(r.location);
-            }
-            binary[r.location - startpc + 1] = result & 0xff;
-         }
-      } else if (r.reftype == 1) {
-        if (result < -128 || result > 255) {
-           fprintf(stderr,".byte reference %i at %04x is out of range.\n",result,r.location);
-           failReference(r.location);
-        }
-        binary[r.location - startpc] = result & 0xff;
-      } else if (r.reftype == 2) {
-        if (result < -32768 || result > 65535) {
-           fprintf(stderr,".word reference %i at %04x is out of range.\n",result,r.location);
-           failReference(r.location);
-        }
-        binary[r.location - startpc] = (result >> 8) & 0xff;
-        binary[r.location - startpc + 1] = result & 0xff;
-      }
-   }
+void Tasm::resolveReferences(void) {
+  int failpc;
+  if (!xref.resolveReferences(startpc, binary, failpc))
+     failReference(failpc);
 }
 
-int tasm::execute(void) {
+
+int Tasm::execute(void) {
   while (!pc && fetcher.getLine()) {
     archiver.push_back(fetcher.peekLine(),pc);
     getorg();
@@ -651,10 +485,10 @@ int tasm::execute(void) {
 
   resolveReferences();
 
-  logger.init();
-  logger.write(archiver.lines, archiver.pc, startpc, pc, binary, nbytes);
-  logger.write(binary,nbytes);
-  logger.write(binary,nbytes,startpc,execstart);
+  log.init();
+  log.writeLst(archiver.lines, archiver.pc, startpc, pc, binary, nbytes);
+  log.writeObj(binary,nbytes);
+  log.writeC10(binary,nbytes,startpc,execstart);
 
   return 0;
 }

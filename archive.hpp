@@ -6,10 +6,10 @@
 #include <vector>
 #include <string>
 
-class archive {
+class Archive {
  public:
-  archive() {};
-  void push_back(const char *line, const int pc);
+  Archive() {};
+  void push_back(const char *line, int pc);
 
   std::vector<std::string> lines;
   std::vector<int> pc;

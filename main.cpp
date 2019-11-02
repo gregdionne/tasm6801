@@ -4,6 +4,6 @@
 
 int main(int argc, char *argv[])
 {
-  tasm t(argc, argv);
-  return t.execute();
+  Tasm tasm(argc, argv);
+  return tasm.execute();
 }

@@ -5,45 +5,31 @@
 
 #include <string>
 #include <vector>
+#include "expression.hpp"
 
-std::string catlabel(const char *modulename, const char *labelname);
-
-struct monomial {
+class Reference {
 public:
-  std::string name;
-  int multiplier;
-};
-
-class reference {
-public:
-  reference(int loc, int rtype) : location(loc), reftype(rtype) {};
-  std::vector<monomial> polynomial;
+  Reference(int loc, int rtype) : location(loc), reftype(rtype) {};
+  Expression expression;
   int location;
-  int reftype; // 0 == OP,  1 == BYTE, 2 == WORD 
+  int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP 
 };
 
-struct label {
+class CRTable {
 public:
-  label(const char *modulename, const char *labelname);
-  std::string name;
-  std::vector<monomial> polynomial;
-  bool isdirty;
-};
-
-class crtable {
-public:
-  crtable(void) {};
+  CRTable(void) {};
   bool addlabel(const char *modulename, const char *labelname, int location);
-  bool addlabel(label l);
-  bool findlabel(std::string name, int &ilbl);
-  bool findlabel(const char *modulename, const char *labelname, int& ilbl);
-  void addreference(reference r);
-  bool resolve(reference &r, int &location, std::string& offender);
-  bool resolve(const std::string name, int &location);
-  std::vector<reference> references;
+  bool addlabel(Label l);
+  void addreference(Reference r);
+  std::vector<Reference> references;
+  bool resolve(Reference& r, int& result, std::string& offender);
+  int immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir);
+  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc);
+  int tentativelyResolve(Reference& r);
+  bool resolveReferences(int startpc, unsigned char *binary, int& failpc);
 
 private:
-  std::vector<label> labels;
+  std::vector<Label> labels;
 };
   
 #endif

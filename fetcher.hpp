@@ -1,10 +1,10 @@
 // Copyright (C) 2019 Greg Dionne
 // Distributed under MIT License
-#ifndef FETCH_HPP
-#define FETCH_HPP
+#ifndef FETCHER_HPP
+#define FETCHER_HPP
 
 #include <stdio.h>
-class fetch {
+class Fetcher {
  public:
   char buf[BUFSIZ];
   char token[BUFSIZ];
@@ -15,8 +15,8 @@ class fetch {
   int linelen;
   int colnum;
   int keyID;
-  fetch(int argc, char *argv[]) :
-       argc(argc), argv(argv), filecnt(0), linenum(0), linelen(0), colnum(0) 
+  Fetcher(int argc, char *argv[]) :
+      argc(argc), argv(argv), filecnt(0), linenum(0), linelen(0), colnum(0) 
   {init();}
 
   char *getLine(void);
