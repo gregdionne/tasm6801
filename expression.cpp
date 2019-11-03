@@ -49,7 +49,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    if (fetcher.isHexadecimalWord()) {
       int c = fetcher.colnum;
       int w = fetcher.getHexadecimalWord();
-      if (fetcher.skipChar('h') || fetcher.skipChar('H')) {
+      if ((fetcher.skipChar('h') || fetcher.skipChar('H')) && !fetcher.isAlnum()) {
          multiplier *= w;
          return;
       }
@@ -59,7 +59,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    if (fetcher.isBinaryWord()) {
       int c = fetcher.colnum;
       int w = fetcher.getBinaryWord();
-      if (fetcher.skipChar('b') || fetcher.skipChar('B')) {
+      if ((fetcher.skipChar('b') || fetcher.skipChar('B')) && !fetcher.isAlnum()) {
          multiplier *= w;
          return;
       }
@@ -69,7 +69,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    if (fetcher.isQuaternaryWord()) {
       int c = fetcher.colnum;
       int w = fetcher.getQuaternaryWord();
-      if (fetcher.skipChar('q') || fetcher.skipChar('Q')) {
+      if ((fetcher.skipChar('q') || fetcher.skipChar('Q')) && !fetcher.isAlnum()) {
          multiplier *= w;
          return;
       }
