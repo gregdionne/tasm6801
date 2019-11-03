@@ -1,12 +1,7 @@
 # tasm6801
 Simple [Telemark](http://www.s100computers.com/Software%20Folder/6502%20Monitor/The%20Telemark%20Assembler%20Manual.pdf)-like assembler for the Motorola 6801/6803 processor for use with linux/OS-X.  Intended to be used in conjunction with various emulators of the TRS80 MC-10 (most notably James Tamer's "Virtual MC-10").
 
-Most modern linux C++ compilers should be able to use the code as-is.  Tested on Apple LLVM version 10.0.1 (clang-1001.0.46.4).
-
-c++ *.cpp -o tasm6801
-
-Once built, you can compile TASM assembly for the 6801.  
-
+# Compatibility
 Supported directives are:
 *.msfirst*
 *.org*
@@ -19,7 +14,14 @@ Supported directives are:
 *.text*
 *.block*
 
-To use it, you can just type:
+Preprocessor macros are not yet supported, however you may use "#define" 
+
+# instructions
+Most modern linux C++ compilers should be able to build the code as-is.  Tested on Apple LLVM version 10.0.1 (clang-1001.0.46.4).
+
+c++ *.cpp -o tasm6801
+
+Once built, you can compile TASM assembly for the 6801 by typing:
 
 tasm6801 file1 [file2 [file3 ...]]
 

@@ -23,6 +23,7 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
                          /*88*/"EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
                          /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
 
+const char *macros[]={"#define",0};
 const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".byte",".word",".fill",".block",0};
 
 void Tasm::validateObj()
@@ -412,6 +413,7 @@ void Tasm::stripComment(void) {
 void Tasm::process(void) {
    stripComment();
    fetcher.expandTabs(8);
+   macro.process(fetcher,macros);
    if (endReached && !fetcher.isBlankLine())
       fetcher.die("unexpected input beyond .end");
 

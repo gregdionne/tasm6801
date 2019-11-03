@@ -81,6 +81,12 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       return;
    }
 
+   if (fetcher.skipChar('\'')) {
+      multiplier *= fetcher.getQuotedLiteral();
+      fetcher.matchChar('\'');
+      return;
+   }
+
    if (fetcher.isAlpha() || fetcher.isChar('_')) {
       if (fetcher.isChar('_'))
          name = modulename;

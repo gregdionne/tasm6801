@@ -5,6 +5,7 @@
 
 #include "fetcher.hpp"
 #include "crtable.hpp"
+#include "macro.hpp"
 #include "log.hpp"
 #include "archive.hpp"
 
@@ -67,6 +68,7 @@ private:
 
   Fetcher fetcher;
   CRTable xref;
+  Macro macro;
   Log log;
   Archive archiver;
   unsigned char binary[65536];
