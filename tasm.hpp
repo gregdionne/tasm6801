@@ -61,7 +61,6 @@ private:
   void doLabel(void);
 
   void stripComment(void);
-  void getorg(void);
   void process(void);
   void resolveReferences(void);
   void failReference(int refloc);

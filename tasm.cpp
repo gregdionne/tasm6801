@@ -27,9 +27,13 @@ const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module"
 
 void Tasm::validateObj()
 {
-   if (!nbytes)
+   if (!nbytes) {
       startpc = pc;
-   else {
+      if (!startpc) {
+         fetcher.colnum = 0;
+         fetcher.die(".org directive missing before this line");
+      }
+   } else {
       int bytesMissing = pc - (startpc + nbytes);
       if (bytesMissing < 0) 
          fetcher.die("object binary pc ($%04X) out of sync with pc ($%04X)",startpc+nbytes,pc);
@@ -376,9 +380,13 @@ void Tasm::doLabel(void) {
          doModule();
          xref.addlabel(modulename,labelname,pc);
          fetcher.matcheol();
+      } else if (!strcmp(directives[fetcher.keyID],".org")) {
+         doOrg();
+         xref.addlabel(modulename,labelname,pc);
+         fetcher.matcheol();
       } else {
-      xref.addlabel(modulename,labelname,pc);
-      doDirective();
+         xref.addlabel(modulename,labelname,pc);
+         doDirective();
    } else {
       xref.addlabel(modulename,labelname,pc);
       doAssembly();
@@ -398,46 +406,6 @@ void Tasm::stripComment(void) {
        return;
     }
   }
-}
-
-void Tasm::getorg(void) {
-  stripComment();
-  fetcher.expandTabs(8);
-
-  if (isLabelName()) {
-    getLabelName();
-    fetcher.matchWhitespace();
-    if (!fetcher.skipKeyword(directives))
-       fetcher.die("\".org\" or \".equ\" expected");
-    if (strcmp(directives[fetcher.keyID],".equ"))
-       fetcher.die("\".equ\" expected");
-
-    fetcher.skipWhitespace();
-    doEqu(labelname);
-    fetcher.matcheol();
-    fetcher.colnum = 0;
-    return;
-  }
-
-  fetcher.skipWhitespace();
-  if (fetcher.iseol() || fetcher.isChar(';')) {
-    fetcher.colnum = 0;
-    return;
-  }
-
-  if (fetcher.skipKeyword(directives))
-    if (!strcmp(directives[fetcher.keyID],".msfirst")) {
-      fetcher.colnum = 0;
-      return;
-    } else if (!strcmp(directives[fetcher.keyID],".org")) {
-      fetcher.matchWhitespace();
-      archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org");
-    } else
-      fetcher.die("unexpected or unsupported directive");
-  else
-    fetcher.die("assembly must start with \".org\" directive");
-
-  fetcher.colnum = 0;
 }
 
 void Tasm::process(void) {
@@ -473,11 +441,6 @@ void Tasm::resolveReferences(void) {
 
 
 int Tasm::execute(void) {
-  while (!pc && fetcher.getLine()) {
-    archiver.push_back(fetcher.peekLine(),pc);
-    getorg();
-  }
-
   while (fetcher.getLine()) {
     archiver.push_back(fetcher.peekLine(),pc);
     process();
