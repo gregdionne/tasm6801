@@ -21,7 +21,7 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
                          /*78*/"EORA","ADCA","ORAA","ADDA","CPX","JSR","LDS","STS",
                          /*80*/"SUBB","CMPB","SBCB","ADDD","ANDB","BITB","LDAB","STAB",
                          /*88*/"EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
-                         /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB",0};
+                         /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
 
 const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".byte",".word",".fill",".block",0};
 
@@ -183,6 +183,7 @@ void Tasm::doAssembly(void) {
             opcode == 0x93 ? 0x05 :
             opcode == 0x94 ? 0x48 :
             opcode == 0x95 ? 0x58 :
+            opcode == 0x96 ? 0x68 :
                              opcode;
 
    if (processInherent(opcode)) {
