@@ -14,7 +14,9 @@ Supported directives are:
 *.text*
 *.block*
 
-Preprocessor macros are not yet supported, however you may use "#define" 
+Preprocessor macros are not yet supported, however you may use "#define" to preform simple literal substitution
+
+Expressions respect traditional operator precedence (e.g. "a+b*c" evaluates as "a + (b*c)" instead of (a+b) * c")
 
 ## Instructions
 Most modern linux C++ compilers should be able to build the code as-is.  Tested on Apple LLVM version 10.0.1 (clang-1001.0.46.4).

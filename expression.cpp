@@ -12,8 +12,9 @@ Term::~Term()
 
 Term::Term(const Term& t) 
 {
-   multiplier = t.multiplier;
    name = t.name;
+   value = t.value;
+   complements = t.complements;
    expression = t.expression;
    if (expression) 
       ++expression->refcnt;
@@ -22,27 +23,28 @@ Term::Term(const Term& t)
 void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    fetcher.skipWhitespace();
-   while (fetcher.skipChar('-')) {
-      multiplier *= -1;
+
+   while (fetcher.isChar('-') || fetcher.isChar('~')) {
+      complements.push_back(fetcher.getChar());
       fetcher.skipWhitespace();
    }
-
+  
    if (fetcher.skipChar('$')) { // PC or hex
       fetcher.skipWhitespace();
       if (fetcher.isHexadecimalWord())
-         multiplier *= fetcher.getHexadecimalWord();
+         value = fetcher.getHexadecimalWord();
       else
-         multiplier *= pc;
+         value = pc;
       return;
    } 
 
    if (fetcher.skipChar('*')) { // PC
-      multiplier *= pc;
+      value = pc;
       return;
    }
 
    if (fetcher.skipChar('%')) {
-      multiplier *= fetcher.getBinaryWord();
+      value = fetcher.getBinaryWord();
       return;
    }
 
@@ -50,7 +52,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       int c = fetcher.colnum;
       int w = fetcher.getHexadecimalWord();
       if ((fetcher.skipChar('h') || fetcher.skipChar('H')) && !fetcher.isAlnum()) {
-         multiplier *= w;
+         value = w;
          return;
       }
       fetcher.colnum = c;
@@ -60,7 +62,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       int c = fetcher.colnum;
       int w = fetcher.getBinaryWord();
       if ((fetcher.skipChar('b') || fetcher.skipChar('B')) && !fetcher.isAlnum()) {
-         multiplier *= w;
+         value = w;
          return;
       }
       fetcher.colnum = c;
@@ -70,19 +72,19 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       int c = fetcher.colnum;
       int w = fetcher.getQuaternaryWord();
       if ((fetcher.skipChar('q') || fetcher.skipChar('Q')) && !fetcher.isAlnum()) {
-         multiplier *= w;
+         value = w;
          return;
       }
       fetcher.colnum = c;
    }     
 
    if (fetcher.isDecimalWord()) {
-      multiplier *= fetcher.getDecimalWord();
+      value = fetcher.getDecimalWord();
       return;
    }
 
    if (fetcher.skipChar('\'')) {
-      multiplier *= fetcher.getQuotedLiteral();
+      value = fetcher.getQuotedLiteral();
       fetcher.matchChar('\'');
       return;
    }
@@ -155,10 +157,19 @@ void AndExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
    } while (fetcher.skipChar(conjunction));
 }
 
-void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
+void XorExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    do {
       operands.push_back(AndExpression());
+      operands.back().parse(fetcher, modulename, pc);
+      fetcher.skipWhitespace();
+   } while (fetcher.skipChar(conjunction));
+}
+
+void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
+{
+   do {
+      operands.push_back(XorExpression());
       operands.back().parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(conjunction));
@@ -168,7 +179,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
 {
     bool success = false;
     offender = name;
-    result = 1;
+    result = value;
 
     if (expression != NULL) {
        success = expression->evaluate(labels, offender, result);
@@ -187,7 +198,15 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
                 break;
              }
          }
-    result *= multiplier;
+
+    while (!complements.empty()) {
+       if (complements.back()=='~')
+          result = ~result;
+       else // (complements.back()=='-')
+          result = -result;
+       complements.pop_back();
+    }
+
     return success;
 }
 
@@ -238,6 +257,22 @@ bool AndExpression::evaluate(std::vector<Label>& labels, std::string& offender, 
         if (!operands[i].evaluate(labels, offender, answer))
             return false;
         result &= answer;
+    }
+    return true;
+}
+
+bool XorExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
+{
+    int answer;
+    if (operands.empty() || !operands[0].evaluate(labels, offender, answer))
+       return false;
+
+    result = answer;
+    for (int i=1; i<operands.size(); ++i) {
+        int answer;
+        if (!operands[i].evaluate(labels, offender, answer))
+            return false;
+        result ^= answer;
     }
     return true;
 }

@@ -12,14 +12,15 @@ class Label;
 
 class Term {
 public:
-  Term() : expression(NULL),multiplier(1) {}
+  Term() : expression(NULL) {}
   Term(const Term& t);
   ~Term();
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:
   std::string name;
-  int multiplier;
+  int value;
+  std::vector<char> complements;
   Expression *expression; // because C++
 };
 
@@ -53,13 +54,22 @@ private:
   std::vector<MulExpression> subtrahends;
 };
 
-class AndExpression : public NaryInvertableExpression {
+class AndExpression : public NaryExpression {
 public:
   AndExpression() {conjunction='&';}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:
   std::vector<AddExpression> operands;
+};
+
+class XorExpression : public NaryExpression {
+public:
+  XorExpression() {conjunction='^';}
+  void parse(Fetcher& fetcher, const char *modulename, int pc);
+  bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
+private:
+  std::vector<AndExpression> operands;
 };
 
 class Expression : public NaryExpression {
@@ -70,7 +80,7 @@ public:
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
   int refcnt;
 private:
-  std::vector<AndExpression> operands;
+  std::vector<XorExpression> operands;
   int value;
 };
 
