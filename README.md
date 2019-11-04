@@ -16,7 +16,7 @@ Directive  | Pseudo-op | Syntax                                                 
 .word      | fdb       | *[label]* .word *expr* *[, *expr ...]*                              | write a word (two bytes) to the object file.
 .fill      | rzb       | *[label]* .fill *num_bytes* *[, fill_value]*                        | fill a specified number of bytes with a constant value.  (zero by default)
 .block     | rmb       | *[label]* .block *num_bytes*                                        | bump the program counter by the specified number of bytes without writing a value.
-.text      | fcc       | *[label]* .text *(*"*string*"*|expr)* *[, (*"*string*"*|expr) ...]* | write a sequence of strings or byte expressions to the object file.
+.text      | fcc       | *[label]* .text *(*"*string*"*\|expr)* *[, (*"*string*"*\|expr) ...]* | write a sequence of strings or byte expressions to the object file.
 .strs      | fcs       | *[label]* .strs "*string*" *[, "string" ...]*                       | write a sequence of msb-terminated strings.
 .strz      | fcz       | *[label]* .strz "*string*" *[, "string" ...]*                       | write a sequence of null-terminated strings.
 
