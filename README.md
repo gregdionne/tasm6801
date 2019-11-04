@@ -4,21 +4,21 @@ Simple [Telemark](http://www.s100computers.com/Software%20Folder/6502%20Monitor/
 ## Compatibility and Extensions
 Supported directives and their corresponding pseudo-op's are:
 
-Directive  | Pseudo-op | Syntax                                                              | Description
----------  | --------- | ------------------------------------------------------------------- | -----------
-.msfirst   |           |                                                                     | *ignored*
-.org       | org       | *[label]* .org *address*                                            | set program counter to new address.
-.end       | end       | *[label]* .end *[expr]*                                             | finalize object record.  optionally set execution start address to expression.
-.execstart |           | *[label]* .execstart                                                | set execution start address to the current program counter.
-.equ       | equ       | *label* .equ *expr*                                                 | may be used to assign values to labels.  expressions may contain other labels.
-.module    | module    | *[label]* .module *label*                                           | interpret labels beginning with "_" as local labels until encountering the next .module
-.byte      | fcb       | *[label]* .byte *expr* *[, expr ...]*                               | write a byte to the object file.
-.word      | fdb       | *[label]* .word *expr* *[, *expr ...]*                              | write a word (two bytes) to the object file.
-.fill      | rzb       | *[label]* .fill *num_bytes* *[, fill_value]*                        | fill a specified number of bytes with a constant value.  (zero by default)
-.block     | rmb       | *[label]* .block *num_bytes*                                        | bump the program counter by the specified number of bytes without writing a value.
+Directive  | Pseudo-op | Syntax                                                                | Description
+---------  | --------- | --------------------------------------------------------------------- | -----------
+.msfirst   |           |                                                                       | *ignored*
+.org       | org       | *[label]* .org *address*                                              | set program counter to new address.
+.end       | end       | *[label]* .end *[expr]*                                               | finalize object record.  optionally set execution start address to expression.
+.execstart |           | *[label]* .execstart                                                  | set execution start address to the current program counter.
+.equ       | equ       | *label* .equ *expr*                                                   | may be used to assign values to labels.  expressions may contain other labels.
+.module    | module    | *[label]* .module *label*                                             | interpret labels beginning with "_" as local labels until encountering the next .module
+.byte      | fcb       | *[label]* .byte *expr* *[, expr ...]*                                 | write a sequence of bytes to the object file.
+.word      | fdb       | *[label]* .word *expr* *[, *expr ...]*                                | write a sequence of words (two bytes each) to the object file.
+.fill      | rzb       | *[label]* .fill *num_bytes* *[, fill_value]*                          | fill a specified number of bytes with a constant value.  (zero by default)
+.block     | rmb       | *[label]* .block *num_bytes*                                          | bump the program counter by the specified number of bytes without writing a value.
 .text      | fcc       | *[label]* .text *(*"*string*"*\|expr)* *[, (*"*string*"*\|expr) ...]* | write a sequence of strings or byte expressions to the object file.
-.strs      | fcs       | *[label]* .strs "*string*" *[, "string" ...]*                       | write a sequence of msb-terminated strings.
-.strz      | fcz       | *[label]* .strz "*string*" *[, "string" ...]*                       | write a sequence of null-terminated strings.
+.strs      | fcs       | *[label]* .strs "*string*" *[, "string" ...]*                         | write a sequence of msb-terminated strings.
+.strz      | fcz       | *[label]* .strz "*string*" *[, "string" ...]*                         | write a sequence of null-terminated strings.
 
 Preprocessor macros are not yet supported, however you may use "#define" to preform simple literal substitution.
 
