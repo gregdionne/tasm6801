@@ -45,10 +45,11 @@ private:
 
   void doAssembly(void);
 
-  void doString(void);
   void doBlock(void);
   void doFill(void);
   void doText(void);
+  void doNString(void);
+  void doCString(void);
   void doByte(void);
   void doWord(void);
   void doOrg(void);

@@ -39,7 +39,7 @@ int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modul
    int result;
    std::string offender;
    if (!resolve(r, result, offender))
-      fetcher.die("%s argument must be immediately resolveable");
+      fetcher.die("label \"%s\" must be immediately resolveable for this directive or pseudo-operation",offender.c_str());
 
    return result;
 }

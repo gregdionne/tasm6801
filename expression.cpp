@@ -85,7 +85,12 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 
    if (fetcher.skipChar('\'')) {
       value = fetcher.getQuotedLiteral();
-      fetcher.matchChar('\'');
+
+      // allow auto-termination of character constant
+      // if followed by whitespace
+      if (!fetcher.skipWhitespace())
+         fetcher.matchChar('\'');
+
       return;
    }
 
@@ -148,10 +153,44 @@ void AddExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
       }
 }
 
+bool ShiftExpression::getDirection(Fetcher& fetcher, char& direction)
+{
+   int savecol = fetcher.colnum;
+   if (fetcher.skipChar(conjunction) && fetcher.skipChar(conjunction)) {
+      direction = conjunction;
+      return true;
+   }
+
+   fetcher.colnum = savecol;
+   if (fetcher.skipChar(inverse) && fetcher.skipChar(inverse)) {
+      direction = inverse;
+      return true;
+   }
+
+   fetcher.colnum = savecol;
+   return false;
+}
+
+void ShiftExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
+{
+   operands.push_back(AddExpression());
+   operands.back().parse(fetcher, modulename, pc);
+   fetcher.skipWhitespace();
+   
+   char direction;
+   while (getDirection(fetcher, direction)) {
+      directions.push_back(direction);
+      fetcher.skipWhitespace();
+      operands.push_back(AddExpression());
+      operands.back().parse(fetcher, modulename, pc);
+      fetcher.skipWhitespace();
+   }
+}
+
 void AndExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    do {
-      operands.push_back(AddExpression());
+      operands.push_back(ShiftExpression());
       operands.back().parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(conjunction));
@@ -173,6 +212,10 @@ void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
       operands.back().parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(conjunction));
+
+   // clobber trailing comments
+   if (fetcher.isChar(';'))
+      *fetcher.peekLine() = '\n';
 }
 
 bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
@@ -199,12 +242,12 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
              }
          }
 
-    while (!complements.empty()) {
-       if (complements.back()=='~')
+    int n = complements.size();
+    for (int i=0; i<n; i++) {
+       if (complements[n-i-1]=='~')
           result = ~result;
-       else // (complements.back()=='-')
+       else // (complements[n-i-1]=='-')
           result = -result;
-       complements.pop_back();
     }
 
     return success;
@@ -245,6 +288,25 @@ bool AddExpression::evaluate(std::vector<Label>& labels, std::string& offender, 
         if (!subtrahends[i].evaluate(labels, offender, answer))
             return false;
         result -= answer;
+    }
+    return true;
+}
+
+bool ShiftExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
+{
+    int answer;
+    if (operands.empty() || !operands[0].evaluate(labels, offender, answer))
+       return false;
+
+    result = answer;
+    for (int i=1; i<operands.size(); ++i) {
+        if (!operands[i].evaluate(labels, offender, answer))
+            return false;
+
+        if (directions[i-1]==conjunction)
+           result <<= answer;
+        else
+           result >>= answer;
     }
     return true;
 }

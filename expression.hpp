@@ -54,13 +54,24 @@ private:
   std::vector<MulExpression> subtrahends;
 };
 
+class ShiftExpression : public NaryInvertableExpression {
+public:
+  ShiftExpression() {conjunction = '<'; inverse='>';}
+  void parse(Fetcher& fetcher, const char *modulename, int pc);
+  bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
+  bool getDirection(Fetcher& fetcher, char& direction);
+private:
+  std::vector<AddExpression> operands;
+  std::vector<char> directions;
+};
+
 class AndExpression : public NaryExpression {
 public:
   AndExpression() {conjunction='&';}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:
-  std::vector<AddExpression> operands;
+  std::vector<ShiftExpression> operands;
 };
 
 class XorExpression : public NaryExpression {

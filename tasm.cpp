@@ -24,7 +24,8 @@ const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP"
                          /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
 
 const char *macros[]={"#define",0};
-const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".byte",".word",".fill",".block",0};
+const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".nstring",".cstring",".byte",".word",".fill",".block",0};
+const char *pseudo_ops[]={".msfirst","org",".execstart","end","equ",".module","fcc","fcs","fcn","fcb","fdb","rzb","rmb",0};
 
 void Tasm::validateObj()
 {
@@ -257,11 +258,33 @@ void Tasm::doFill(void) {
 
 void Tasm::doText(void) {
    fetcher.matchWhitespace();
-   fetcher.matchChar('"');
-   while (!fetcher.skipChar('"') && !fetcher.iseol())
+   char delim = fetcher.peekChar();
+   if (!fetcher.skipChar('\''))
+      fetcher.matchChar('"');
+   while (!fetcher.isChar(delim) && !fetcher.iseol())
       writeByte(fetcher.getQuotedLiteral());
-
+   fetcher.matchChar(delim);
    fetcher.matcheol();
+}
+
+void Tasm::doNString(void) {
+   fetcher.matchWhitespace();
+   char delim = fetcher.peekChar();
+   if (!fetcher.skipChar('\''))
+      fetcher.matchChar('"');
+   while (!fetcher.isChar(delim) && !fetcher.iseol()) {
+      char c = fetcher.getQuotedLiteral();
+      if (fetcher.isChar(delim))
+         c |= 128;
+      writeByte(c);
+   }
+   fetcher.matchChar(delim);
+   fetcher.matcheol();
+}
+
+void Tasm::doCString(void) {
+   doText();
+   writeByte(0);
 }
 
 void Tasm::doByte(void) {
@@ -270,10 +293,10 @@ void Tasm::doByte(void) {
      if (fetcher.skipChar('"'))
        while (!fetcher.skipChar('"') && !fetcher.iseol())
           writeByte(fetcher.getChar());
-     else if (fetcher.skipChar('\'')) {
-          writeByte(fetcher.getQuotedLiteral());
-          fetcher.matchChar('\'');
-     } else
+//     else if (fetcher.skipChar('\'')) {
+//          writeByte(fetcher.getQuotedLiteral());
+//          fetcher.matchChar('\'');
+     else
         writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
      fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
@@ -291,6 +314,10 @@ void Tasm::doWord(void) {
 
 void Tasm::doEnd(void) {
    endReached = true;
+   if (!fetcher.isBlankLine()) {
+       fetcher.skipWhitespace();
+       execstart = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".end");
+   }
 }
 
 void Tasm::doExecStart(void) {
@@ -344,6 +371,10 @@ void Tasm::doDirective(void) {
       doWord();
    else if (!strcmp(directives[fetcher.keyID],".text"))
       doText();
+   else if (!strcmp(directives[fetcher.keyID],".nstring"))
+      doNString();
+   else if (!strcmp(directives[fetcher.keyID],".cstring"))
+      doCString();
    else if (!strcmp(directives[fetcher.keyID],".msfirst"))
       doMSFirst();
    else
@@ -373,7 +404,7 @@ void Tasm::doLabel(void) {
 
    fetcher.skipWhitespace();
 
-   if (fetcher.skipKeyword(directives))
+   if (fetcher.skipKeyword(directives) || fetcher.skipKeyword(pseudo_ops))
       if (!strcmp(directives[fetcher.keyID],".equ")) {
          fetcher.skipWhitespace();
          doEqu(labelname);
@@ -399,6 +430,13 @@ void Tasm::stripComment(void) {
   bool squote = false;
   bool dquote = false;
 
+  // strip #defines or leading * comments
+  int savecol = fetcher.colnum;
+  fetcher.skipWhitespace();
+  if (fetcher.isChar('*') || fetcher.isChar('#'))
+     *fetcher.peekLine() = '\n';
+  fetcher.colnum = savecol;
+
   for (char *c = fetcher.peekLine(); *c != '\n'; ++c) {
     squote ^= !dquote && *c == '\'';
     dquote ^= !squote && *c == '"';
@@ -423,7 +461,7 @@ void Tasm::process(void) {
    }
    
    fetcher.skipWhitespace();
-   if (fetcher.skipKeyword(directives))
+   if (fetcher.skipKeyword(directives) || fetcher.skipKeyword(pseudo_ops))
        doDirective();
    else if (!fetcher.isBlankLine())
        doAssembly();
