@@ -1,24 +1,7 @@
 // Copyright (C) 2019 Greg Dionne
 // Distributed under MIT License
+#include <memory>
 #include "expression.hpp"
-
-Term::~Term()
-{
-   if (expression && !--expression->refcnt) {
-      delete expression;
-      expression = NULL;
-   }
-}
-
-Term::Term(const Term& t) 
-{
-   name = t.name;
-   value = t.value;
-   complements = t.complements;
-   expression = t.expression;
-   if (expression) 
-      ++expression->refcnt;
-}
 
 void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
@@ -105,8 +88,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    }
 
    if (fetcher.skipChar('(')) {
-      expression = new Expression;
-      expression->refcnt = 1;
+      expression = std::make_shared<Expression>();
       expression->parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
       fetcher.matchChar(')');
@@ -224,7 +206,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     offender = name;
     result = value;
 
-    if (expression != NULL) {
+    if (expression.get() != NULL) {
        success = expression->evaluate(labels, offender, result);
        
     } else if (name == "") 

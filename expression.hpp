@@ -13,15 +13,13 @@ class Label;
 class Term {
 public:
   Term() : expression(NULL) {}
-  Term(const Term& t);
-  ~Term();
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:
   std::string name;
   int value;
   std::vector<char> complements;
-  Expression *expression; // because C++
+  std::shared_ptr<Expression> expression; // because C++
 };
 
 class NaryExpression {
@@ -85,11 +83,10 @@ private:
 
 class Expression : public NaryExpression {
 public:
-  Expression() : refcnt(0) {conjunction='|';}
-  Expression(int location) : refcnt(0),value(location) {conjunction='|';}
+  Expression() {conjunction='|';}
+  Expression(int location) : value(location) {conjunction='|';}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
-  int refcnt;
 private:
   std::vector<XorExpression> operands;
   int value;
