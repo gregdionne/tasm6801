@@ -34,7 +34,7 @@ c++ *.cpp -o tasm6801
 Once built, you can compile TASM assembly for the 6801 by typing:
 
 ```
-tasm6801 *file1 [file2 [file3 ...]]*
+tasm6801 file1 [file2 [file3 ...]]
 ```
 
 This will read the files (in order), compile, and output a listing file (file1.lst), an object file (file1.obj) and a MC-10 cassette (file1.c10) file.   Most MC-10 emulators can load a .c10 file into memory.  By default, the load address of the object binary is used as the execution start address for MICROCOLOR BASIC's EXEC command.  
