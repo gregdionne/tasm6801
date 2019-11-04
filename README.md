@@ -13,7 +13,7 @@ Directive  | Pseudo-op | Syntax                                                 
 .equ       | equ       | *label* .equ *expr*                                                   | may be used to assign values to labels.  expressions may contain other labels.
 .module    | module    | *[label]* .module *label*                                             | interpret labels beginning with "_" as local labels until encountering the next .module
 .byte      | fcb       | *[label]* .byte *expr* *[, expr ...]*                                 | write a sequence of bytes to the object file.
-.word      | fdb       | *[label]* .word *expr* *[, *expr ...]*                                | write a sequence of words (two bytes each) to the object file.
+.word      | fdb       | *[label]* .word *expr* *[, expr ...]*                                 | write a sequence of words (two bytes each) to the object file.
 .fill      | rzb       | *[label]* .fill *num_bytes* *[, fill_value]*                          | fill a specified number of bytes with a constant value.  (zero by default)
 .block     | rmb       | *[label]* .block *num_bytes*                                          | bump the program counter by the specified number of bytes without writing a value.
 .text      | fcc       | *[label]* .text *(*"*string*"*\|expr)* *[, (*"*string*"*\|expr) ...]* | write a sequence of strings or byte expressions to the object file.
