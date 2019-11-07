@@ -3,6 +3,50 @@
 #include <memory>
 #include "expression.hpp"
 
+OpTable::OpTable() {
+   // C++11 has a better way...
+   precedenceGroups.resize(7); // seventh (offset 6) is empty
+   precedenceGroups[0].push_back(Operator("|",bit_or));
+   precedenceGroups[1].push_back(Operator("^",bit_xor));
+   precedenceGroups[2].push_back(Operator("&",bit_and));
+   precedenceGroups[3].push_back(Operator("+",add));
+   precedenceGroups[3].push_back(Operator("-",sub));
+   precedenceGroups[4].push_back(Operator("<<",asl));
+   precedenceGroups[4].push_back(Operator(">>",asr));
+   precedenceGroups[5].push_back(Operator("*",mul));
+   precedenceGroups[5].push_back(Operator("/",div));
+}
+
+int OpTable::add(int x, int y) {return x+y;}
+int OpTable::sub(int x, int y) {return x-y;}
+int OpTable::asl(int x, int y) {return x<<y;}
+int OpTable::asr(int x, int y) {return x>>y;}
+int OpTable::mul(int x, int y) {return x*y;}
+int OpTable::div(int x, int y) {return x/y;}
+int OpTable::bit_and(int x, int y) {return x&y;}
+int OpTable::bit_xor(int x, int y) {return x^y;}
+int OpTable::bit_or(int x, int y) {return x|y;}
+
+OpTable Expression::opTable;
+
+Term::~Term()
+{
+   if (expression && !--expression->refcnt) {
+      delete expression;
+      expression = NULL;
+   }
+}
+
+Term::Term(const Term& t)
+{
+   name = t.name;
+   value = t.value;
+   complements = t.complements;
+   expression = t.expression;
+   if (expression)
+      ++expression->refcnt;
+}
+
 void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    fetcher.skipWhitespace();
@@ -88,7 +132,8 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    }
 
    if (fetcher.skipChar('(')) {
-      expression = std::make_shared<Expression>();
+      expression = new Expression;
+      expression->refcnt = 1;
       expression->parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
       fetcher.matchChar(')');
@@ -97,104 +142,59 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    fetcher.die("Unrecognized input");
 }
 
-void MulExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
+
+void ExpressionGroup::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
-   multiplicands.push_back(Term());
-   multiplicands.back().parse(fetcher, modulename, pc);
-   fetcher.skipWhitespace();
-  
-   while (fetcher.isChar(conjunction) || fetcher.isChar(inverse)) 
-      if (fetcher.skipChar(conjunction)) {
-         multiplicands.push_back(Term());
-         multiplicands.back().parse(fetcher, modulename, pc);
-         fetcher.skipWhitespace();
-      } else {
-         fetcher.matchChar(inverse);
-         divisors.push_back(Term());
-         divisors.back().parse(fetcher, modulename, pc);
-         fetcher.skipWhitespace();
+   if (itPrecedenceGroups->begin() == itPrecedenceGroups->end()) {
+      term.push_back(Term());
+      term.back().parse(fetcher, modulename, pc);
+      fetcher.skipWhitespace();
+   } else {
+      PrecedenceGroups::iterator nextGroup = itPrecedenceGroups;
+      ++nextGroup;
+      operands.push_back(ExpressionGroup(precedenceGroups,nextGroup));
+      operands.back().parse(fetcher, modulename, pc);
+      fetcher.skipWhitespace();
+      bool done = false;
+      while (!done) {
+         done = true;
+         for (PrecedenceGroup::iterator validOp = itPrecedenceGroups->begin(); validOp != itPrecedenceGroups->end(); ++validOp) {
+            if (fetcher.skipToken(validOp->conjunction)) {
+               done = false;
+               operators.push_back(*validOp);
+               operands.push_back(ExpressionGroup(precedenceGroups,nextGroup));
+               operands.back().parse(fetcher, modulename, pc);
+               fetcher.skipWhitespace();
+            }
+         }
       }
-}
-
-void AddExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
-{
-   addends.push_back(MulExpression());
-   addends.back().parse(fetcher, modulename, pc);
-   fetcher.skipWhitespace();
-  
-   while (fetcher.isChar(conjunction) || fetcher.isChar(inverse)) 
-      if (fetcher.skipChar(conjunction)) {
-         addends.push_back(MulExpression());
-         addends.back().parse(fetcher, modulename, pc);
-         fetcher.skipWhitespace();
-      } else {
-         fetcher.matchChar(inverse);
-         subtrahends.push_back(MulExpression());
-         subtrahends.back().parse(fetcher, modulename, pc);
-         fetcher.skipWhitespace();
-      }
-}
-
-bool ShiftExpression::getDirection(Fetcher& fetcher, char& direction)
-{
-   int savecol = fetcher.colnum;
-   if (fetcher.skipChar(conjunction) && fetcher.skipChar(conjunction)) {
-      direction = conjunction;
-      return true;
-   }
-
-   fetcher.colnum = savecol;
-   if (fetcher.skipChar(inverse) && fetcher.skipChar(inverse)) {
-      direction = inverse;
-      return true;
-   }
-
-   fetcher.colnum = savecol;
-   return false;
-}
-
-void ShiftExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
-{
-   operands.push_back(AddExpression());
-   operands.back().parse(fetcher, modulename, pc);
-   fetcher.skipWhitespace();
-   
-   char direction;
-   while (getDirection(fetcher, direction)) {
-      directions.push_back(direction);
-      fetcher.skipWhitespace();
-      operands.push_back(AddExpression());
-      operands.back().parse(fetcher, modulename, pc);
-      fetcher.skipWhitespace();
    }
 }
 
-void AndExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
+bool ExpressionGroup::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
 {
-   do {
-      operands.push_back(ShiftExpression());
-      operands.back().parse(fetcher, modulename, pc);
-      fetcher.skipWhitespace();
-   } while (fetcher.skipChar(conjunction));
-}
+    if (itPrecedenceGroups->begin() == itPrecedenceGroups->end())
+       return term[0].evaluate(labels, offender, result);
+    else {
+       int answer;
+       if (!operands[0].evaluate(labels, offender, answer))
+          return false;
 
-void XorExpression::parse(Fetcher& fetcher, const char *modulename, int pc)
-{
-   do {
-      operands.push_back(AndExpression());
-      operands.back().parse(fetcher, modulename, pc);
-      fetcher.skipWhitespace();
-   } while (fetcher.skipChar(conjunction));
+       result = answer;
+       for (int i=0; i<operators.size(); ++i) {
+           if (!operands[i+1].evaluate(labels, offender, answer))
+               return false;
+
+           result = operators[i].operate(result, answer);
+       }
+       return true;
+   }
 }
 
 void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
-   do {
-      operands.push_back(XorExpression());
-      operands.back().parse(fetcher, modulename, pc);
-      fetcher.skipWhitespace();
-   } while (fetcher.skipChar(conjunction));
-
+   eg[0].parse(fetcher, modulename, pc);
+    
    // clobber trailing comments
    if (fetcher.isChar(';'))
       *fetcher.peekLine() = '\n';
@@ -206,7 +206,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     offender = name;
     result = value;
 
-    if (expression.get() != NULL) {
+    if (expression != NULL) {
        success = expression->evaluate(labels, offender, result);
        
     } else if (name == "") 
@@ -235,110 +235,19 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     return success;
 }
 
-bool MulExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
-{
-    int numerator = 1;
-    for (int i=0; i<multiplicands.size(); ++i) {
-        int answer;
-        if (!multiplicands[i].evaluate(labels, offender, answer))
-            return false;
-        numerator *= answer;
-    }
-
-    int denominator = 1;
-    for (int i=0; i<divisors.size(); ++i) {
-        int answer;
-        if (!divisors[i].evaluate(labels, offender, answer))
-            return false;
-        denominator *= answer;
-    }
-    result = numerator / denominator;
-    return true;
-}
-
-bool AddExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
-{
-    result = 0;
-    for (int i=0; i<addends.size(); ++i) {
-        int answer;
-        if (!addends[i].evaluate(labels, offender, answer))
-            return false;
-        result += answer;
-    }
-    for (int i=0; i<subtrahends.size(); ++i) {
-        int answer;
-        if (!subtrahends[i].evaluate(labels, offender, answer))
-            return false;
-        result -= answer;
-    }
-    return true;
-}
-
-bool ShiftExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
-{
-    int answer;
-    if (operands.empty() || !operands[0].evaluate(labels, offender, answer))
-       return false;
-
-    result = answer;
-    for (int i=1; i<operands.size(); ++i) {
-        if (!operands[i].evaluate(labels, offender, answer))
-            return false;
-
-        if (directions[i-1]==conjunction)
-           result <<= answer;
-        else
-           result >>= answer;
-    }
-    return true;
-}
-
-bool AndExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
-{
-    result = -1;
-    for (int i=0; i<operands.size(); ++i) {
-        int answer;
-        if (!operands[i].evaluate(labels, offender, answer))
-            return false;
-        result &= answer;
-    }
-    return true;
-}
-
-bool XorExpression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
-{
-    int answer;
-    if (operands.empty() || !operands[0].evaluate(labels, offender, answer))
-       return false;
-
-    result = answer;
-    for (int i=1; i<operands.size(); ++i) {
-        int answer;
-        if (!operands[i].evaluate(labels, offender, answer))
-            return false;
-        result ^= answer;
-    }
-    return true;
-}
-
 bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
 {
-    if (operands.size() > 0) {
-       result = 0;
-       for (int i=0; i<operands.size(); ++i) {
-          int answer;
-          if (!operands[i].evaluate(labels, offender, answer))
-             return false;
-          result |= answer;
-       }
-       operands.clear();
-       value = result;
-    }
-
-    result = value;
-    return true;
+   if (eg.empty()) {
+      result = value;
+      return true;
+   } else if (eg[0].evaluate(labels, offender, result)) {
+      eg.clear();
+      value = result;
+      return true;
+   } else {
+      return false;
+   }
 }
-
 
 Label::Label(const char *modulename, const char *labelname)
 {

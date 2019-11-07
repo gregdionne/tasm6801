@@ -42,6 +42,7 @@ class Fetcher {
   void advance(int n);
   bool peekKeyword(const char *keywords[]);
   bool skipKeyword(const char *keywords[]);
+  bool skipToken(const char *token);
   bool isNumber(int (*id)(int),int (*d)(int), int m, int limit);
   bool isBinaryByte(void);
   bool isQuaternaryByte(void);

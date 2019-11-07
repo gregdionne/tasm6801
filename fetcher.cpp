@@ -228,6 +228,16 @@ bool Fetcher::skipKeyword(const char *keywords[])
    return flag;
 }
 
+bool Fetcher::skipToken(const char *string)
+{
+   bool flag;
+
+   if ((flag=!strncmp(string,peekLine(),strlen(string))))
+      advance(strlen(string));
+
+   return flag;
+}
+
 static int isbdigit(int c)
 {
    return c=='0' || c=='1';
