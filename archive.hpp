@@ -8,7 +8,7 @@
 
 class Archive {
  public:
-  Archive() {};
+  Archive() {}
   void push_back(const char *line, int pc);
 
   std::vector<std::string> lines;

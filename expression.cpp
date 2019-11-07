@@ -181,7 +181,7 @@ bool ExpressionGroup::evaluate(std::vector<Label>& labels, std::string& offender
           return false;
 
        result = answer;
-       for (int i=0; i<operators.size(); ++i) {
+       for (std::size_t i=0; i<operators.size(); ++i) {
            if (!operands[i+1].evaluate(labels, offender, answer))
                return false;
 
@@ -212,7 +212,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     } else if (name == "") 
        success = true;
     else
-       for (int i=0; i<labels.size(); ++i)
+       for (std::size_t i=0; i<labels.size(); ++i)
           if (labels[i].name == name) {
              if (labels[i].isdirty) 
                 fprintf(stderr,"Circular reference found.  Label \"%s\"\n",labels[i].name.c_str());
@@ -224,8 +224,8 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
              }
          }
 
-    int n = complements.size();
-    for (int i=0; i<n; i++) {
+    std::size_t n = complements.size();
+    for (std::size_t i=0; i<n; i++) {
        if (complements[n-i-1]=='~')
           result = ~result;
        else // (complements[n-i-1]=='-')

@@ -59,7 +59,7 @@ private:
   void doMSFirst(void);
   void doDirective(void);
 
-  void doEqu(const char *labelname);
+  void doEqu(void);
   void doLabel(void);
 
   void stripComment(void);

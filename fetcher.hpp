@@ -8,15 +8,14 @@ class Fetcher {
  public:
   char buf[BUFSIZ];
   char token[BUFSIZ];
-  int argc;
-  char **argv;
+  int argc_;
+  char **argv_;
   int filecnt;
   int linenum;
-  int linelen;
   int colnum;
   int keyID;
   Fetcher(int argc, char *argv[]) :
-      argc(argc), argv(argv), filecnt(0), linenum(0), linelen(0), colnum(0) 
+      argc_(argc), argv_(argv), filecnt(0), linenum(0), colnum(0) 
   {init();}
 
   char *getLine(void);
@@ -39,7 +38,7 @@ class Fetcher {
   bool isAlpha(void);
   bool isAlnum(void);
   char *peekLine(void);
-  void advance(int n);
+  void advance(size_t n);
   bool peekKeyword(const char *keywords[]);
   bool skipKeyword(const char *keywords[]);
   bool skipToken(const char *token);

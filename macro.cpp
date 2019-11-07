@@ -46,7 +46,7 @@ void Macro::doSubstitutions(Fetcher& fetcher)
       while (!fetcher.iseol() && !fetcher.isAlpha() && !fetcher.isChar('_') && !fetcher.isChar('.'))
          fetcher.getChar();
 
-      for (int i=0; i<definitions.size(); i++) {
+      for (std::size_t i=0; i<definitions.size(); i++) {
          std::string &id = definitions[i].identifier;
          std::string &equ = definitions[i].equivalence;
 

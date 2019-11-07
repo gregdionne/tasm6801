@@ -9,7 +9,7 @@
 
 class Reference {
 public:
-  Reference(int loc, int rtype) : location(loc), reftype(rtype) {};
+  Reference(int loc, int rtype) : location(loc), reftype(rtype) {}
   Expression expression;
   int location;
   int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP 
@@ -17,7 +17,7 @@ public:
 
 class CRTable {
 public:
-  CRTable(void) {};
+  CRTable(void) {}
   bool addlabel(const char *modulename, const char *labelname, int location);
   bool addlabel(Label l);
   void addreference(Reference r);

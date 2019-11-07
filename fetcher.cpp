@@ -9,18 +9,18 @@
 
 void Fetcher::init(void)
 {
-   if (argc>1)
+   if (argc_>1)
       openNext();
    else {
-      fprintf(stderr,"usage: %s file1 [file2 [file3 ...]]\n",argv[0]);
+      fprintf(stderr,"usage: %s file1 [file2 [file3 ...]]\n",argv_[0]);
       exit(1);
    }
 }
 
 void Fetcher::spitLine(void)
 {
-  if (linenum && filecnt && filecnt<argc) 
-    fprintf(stderr,"%s(%i): %s",argv[filecnt],linenum,buf);
+  if (linenum && filecnt && filecnt<argc_) 
+    fprintf(stderr,"%s(%i): %s",argv_[filecnt],linenum,buf);
 }
 
 void Fetcher::die(const char *formatstr, ...)
@@ -28,8 +28,8 @@ void Fetcher::die(const char *formatstr, ...)
    va_list vl;
    va_start(vl, formatstr);
 
-   if (linenum && filecnt && filecnt<argc) {
-     int len = fprintf(stderr,"%s(%i): ",argv[filecnt],linenum);
+   if (linenum && filecnt && filecnt<argc_) {
+     int len = fprintf(stderr,"%s(%i): ",argv_[filecnt],linenum);
      fprintf(stderr,"%s",buf);
      for (int i=0; i<len+colnum; i++)
        fprintf(stderr," ");
@@ -42,10 +42,10 @@ void Fetcher::die(const char *formatstr, ...)
   
 bool Fetcher::openNext(void)
 {
-  if (++filecnt<argc) {
-    fp = fopen(argv[filecnt],"r");
+  if (++filecnt<argc_) {
+    fp = fopen(argv_[filecnt],"r");
     if (!fp) {
-      perror(argv[filecnt]);
+      perror(argv_[filecnt]);
       exit(1);
     }
     return true;
@@ -66,7 +66,6 @@ char *Fetcher::getLine(void)
   
   if (fp) {
     ++linenum;
-    linelen = strlen(buf);
     colnum = 0;
   }
   return buf;
@@ -203,9 +202,9 @@ char *Fetcher::peekLine(void)
    return &buf[colnum];
 }
 
-void Fetcher::advance(int n)
+void Fetcher::advance(size_t n)
 {
-   colnum += n;
+   colnum += static_cast<int>(n);
 }
 
 bool Fetcher::peekKeyword(const char *keywords[])

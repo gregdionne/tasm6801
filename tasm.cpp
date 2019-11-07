@@ -3,29 +3,30 @@
 #include "tasm.hpp"
 #include "string.h"
 
-const char *mnemonics[]={/*00*/".CLB", "NOP", "SEX", ".SETA","LSRD","LSLD","TAP", "TPA",
-                         /*08*/"INX","DEX","CLV","SEV", "CLC","SEC","CLI","SEI",
-                         /*10*/"SBA","CBA",".12",".13",".14",".15", "TAB", "TBA",
-                         /*18*/".18","DAA",".1A","ABA",".1C",".1D",".1E",".1F",
-                         /*20*/"BRA","BRN","BHI","BLS","BHS","BLO","BNE","BEQ",
-                         /*28*/"BVC","BVS","BPL","BMI","BGE","BLT","BGT","BLE",
-                         /*30*/"TSX","INS","PULA","PULB","DES","TXS","PSHA","PSHB",
-                         /*38*/"PULX","RTS", "ABX", "RTI", "PSHX","MUL", "WAI", "SWI",
-                         /*40*/"NEGA",".TSTA","NGCA","COMA","LSRA",".LSRA","RORA","ASRA",
-                         /*48*/"LSLA","ROLA","DECA",".DECA","INCA","TSTA",".TA","CLRA",
-                         /*50*/"NEGB",".TSTB","NGCB","COMB","LSRB",".LSRB","RORB","ASRB",
-                         /*58*/"LSLB","ROLB","DECB",".DECB","INCB","TSTB",".TB","CLRB",
-                         /*60*/"NEG",".TST","NGC","COM","LSR",".LSR","ROR","ASR",
-                         /*68*/"LSL","ROL","DEC",".DEC","INC","TST","JMP","CLR",
-                         /*70*/"SUBA","CMPA","SBCA","SUBD","ANDA","BITA","LDAA","STAA",
-                         /*78*/"EORA","ADCA","ORAA","ADDA","CPX","JSR","LDS","STS",
-                         /*80*/"SUBB","CMPB","SBCB","ADDD","ANDB","BITB","LDAB","STAB",
-                         /*88*/"EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
-                         /*90*/"BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
+static const char *mnemonics[]={
+    /*00*/ ".CLB","NOP","SEX",".SETA","LSRD","LSLD","TAP","TPA",
+    /*08*/ "INX","DEX","CLV","SEV", "CLC","SEC","CLI","SEI",
+    /*10*/ "SBA","CBA",".12",".13",".14",".15", "TAB","TBA",
+    /*18*/ ".18","DAA",".1A","ABA",".1C",".1D",".1E",".1F",
+    /*20*/ "BRA","BRN","BHI","BLS","BHS","BLO","BNE","BEQ",
+    /*28*/ "BVC","BVS","BPL","BMI","BGE","BLT","BGT","BLE",
+    /*30*/ "TSX","INS","PULA","PULB","DES","TXS","PSHA","PSHB",
+    /*38*/ "PULX","RTS","ABX","RTI","PSHX","MUL","WAI","SWI",
+    /*40*/ "NEGA",".TSTA","NGCA","COMA","LSRA",".LSRA","RORA","ASRA",
+    /*48*/ "LSLA","ROLA","DECA",".DECA","INCA","TSTA",".TA","CLRA",
+    /*50*/ "NEGB",".TSTB","NGCB","COMB","LSRB",".LSRB","RORB","ASRB",
+    /*58*/ "LSLB","ROLB","DECB",".DECB","INCB","TSTB",".TB","CLRB",
+    /*60*/ "NEG",".TST","NGC","COM","LSR",".LSR","ROR","ASR",
+    /*68*/ "LSL","ROL","DEC",".DEC","INC","TST","JMP","CLR",
+    /*70*/ "SUBA","CMPA","SBCA","SUBD","ANDA","BITA","LDAA","STAA",
+    /*78*/ "EORA","ADCA","ORAA","ADDA","CPX","JSR","LDS","STS",
+    /*80*/ "SUBB","CMPB","SBCB","ADDD","ANDB","BITB","LDAB","STAB",
+    /*88*/ "EORB","ADCB","ORAB","ADDB","LDD", "STD","LDX","STX",
+    /*90*/ "BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
 
-const char *macros[]={"#define",0};
-const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".nstring",".cstring",".byte",".word",".fill",".block",0};
-const char *pseudo_ops[]={".msfirst","org",".execstart","end","equ",".module","fcc","fcs","fcn","fcb","fdb","rzb","rmb",0};
+static const char *macros[]={"#define",0};
+static const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".nstring",".cstring",".byte",".word",".fill",".block",0};
+static const char *pseudo_ops[]={".msfirst","org",".execstart","end","equ",".module","fcc","fcs","fcn","fcb","fdb","rzb","rmb",0};
 
 void Tasm::validateObj()
 {
@@ -54,7 +55,7 @@ void Tasm::writeByte(int b)
    validateObj();
 
    b &= 0xff;
-   binary[nbytes++] = b;
+   binary[nbytes++] = static_cast<unsigned char>(b);
    pc ++;
 }
 
@@ -66,8 +67,8 @@ void Tasm::writeWord(int w)
    validateObj();
 
    w &= 0xffff;
-   binary[nbytes++] = w>>8;
-   binary[nbytes++] = w&0xff;
+   binary[nbytes++] = static_cast<unsigned char>(w>>8);
+   binary[nbytes++] = static_cast<unsigned char>(w&0xff);
    pc += 2;
 }
 
@@ -262,7 +263,7 @@ void Tasm::doText(void) {
    if (!fetcher.skipChar('\''))
       fetcher.matchChar('"');
    while (!fetcher.isChar(delim) && !fetcher.iseol())
-      writeByte(fetcher.getQuotedLiteral());
+      writeByte(static_cast<unsigned char>(fetcher.getQuotedLiteral()));
    fetcher.matchChar(delim);
    fetcher.matcheol();
 }
@@ -273,7 +274,7 @@ void Tasm::doNString(void) {
    if (!fetcher.skipChar('\''))
       fetcher.matchChar('"');
    while (!fetcher.isChar(delim) && !fetcher.iseol()) {
-      char c = fetcher.getQuotedLiteral();
+      unsigned char c = static_cast<unsigned char>(fetcher.getQuotedLiteral());
       if (fetcher.isChar(delim))
          c |= 128;
       writeByte(c);
@@ -381,7 +382,7 @@ void Tasm::doDirective(void) {
       fetcher.die("unexpected directive");
 }
 
-void Tasm::doEqu(const char *labelname) {
+void Tasm::doEqu(void) {
    Label l(modulename, labelname);
    l.expression.parse(fetcher, modulename, pc);
    xref.addlabel(l);
@@ -407,7 +408,7 @@ void Tasm::doLabel(void) {
    if (fetcher.skipKeyword(directives) || fetcher.skipKeyword(pseudo_ops))
       if (!strcmp(directives[fetcher.keyID],".equ")) {
          fetcher.skipWhitespace();
-         doEqu(labelname);
+         doEqu();
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".module")) {
          doModule();
@@ -491,8 +492,8 @@ int Tasm::execute(void) {
 
   log.init();
   log.writeLst(archiver.lines, archiver.pc, startpc, pc, binary, nbytes);
-  log.writeObj(binary,nbytes);
-  log.writeC10(binary,nbytes,startpc,execstart);
+  log.writeObj(binary,static_cast<std::size_t>(nbytes));
+  log.writeC10(binary,static_cast<std::size_t>(nbytes),startpc,execstart);
 
   return 0;
 }

@@ -51,8 +51,8 @@ private:
 
 class ExpressionGroup {
 public:
- ExpressionGroup(PrecedenceGroups* precedenceGroups, PrecedenceGroups::iterator itPrecedenceGroups) 
-   : precedenceGroups(precedenceGroups), itPrecedenceGroups(itPrecedenceGroups) {}
+ ExpressionGroup(PrecedenceGroups* precGroups, PrecedenceGroups::iterator itPrecGroups) 
+   : precedenceGroups(precGroups), itPrecedenceGroups(itPrecGroups) {}
  void parse(Fetcher& fetcher, const char *modulename, int pc);
  bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:

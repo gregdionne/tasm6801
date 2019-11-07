@@ -7,7 +7,7 @@
 #include <string.h>
 
 void Log::init() {
-  std::string filename = argv[1];
+  std::string filename = argv_[1];
   std::string head = filename.substr(0, filename.rfind("."));
   filename = head + ".lst";
   if (!(flist=fopen(filename.c_str(),"w"))) {
@@ -30,14 +30,14 @@ void Log::init() {
 static char output[1024];
 static char scratch[1024];
 
-void Log::initline(int n, int pc)
+void Log::initline(std::size_t n, int pc)
 {
-   sprintf(output,"%04i   %04X ",n,pc);
+   sprintf(output,"%04lu   %04X ",n,pc);
 }
 
 void Log::finish(std::string line)
 {
-   int n = strlen(output);
+   std::size_t n = strlen(output);
    while (n<24) // 32 is arguably better
       output[n++] = ' ';
    output[n] = '\0';
@@ -56,7 +56,7 @@ void Log::writeFmt(int count, const char *fmt, std::string line, int& remaining,
    finish(line);
 }
 
-void Log::writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here)
+void Log::writeRemaining(std::size_t n, int& remaining, unsigned char binary[], int& byte, int& here)
 {
    while (remaining) {
       initline(n+1,here);
@@ -74,7 +74,10 @@ void Log::writeLst(std::vector<std::string>& lines,
    int here = startpc;
    int byte = 0;
 
-   for (int n=0; n<pc.size(); ++n) {
+   if (endpc-startpc >= binsize)
+      endpc = startpc+binsize-1;
+
+   for (std::size_t n=0; n<pc.size(); ++n) {
       initline(n+1,pc[n]);
 
       if (pc[n]==0) {
@@ -83,12 +86,10 @@ void Log::writeLst(std::vector<std::string>& lines,
       }
 
       if (n<pc.size()-1) {
+
          int there = pc[n+1];
-         if (there > endpc) {
-            fprintf(stderr,"internal error:\n");
-            fprintf(stderr,"line %i: %04X %s",n+1,pc[n],lines[n].c_str());
-            return;
-         }
+         if (there > endpc) 
+            there = endpc;
          
          int remaining = there - here;
          if (remaining<0)
@@ -127,12 +128,12 @@ void Log::writeC10(unsigned char *binary, size_t nbytes, int load_addr, int exec
       exec_addr = load_addr;
 
    spitleader();
-   filenameblock(argv[1],exec_addr,load_addr);
+   filenameblock(argv_[1],exec_addr,load_addr);
 
    spitleader();
 
    while (nbytes > 0) {
-     int bufcnt = nbytes<256 ? nbytes : 255;
+     std::size_t bufcnt = nbytes<256 ? nbytes : 255;
      datablock(binary, bufcnt);
      binary += bufcnt;
      nbytes -= bufcnt;
@@ -141,12 +142,12 @@ void Log::writeC10(unsigned char *binary, size_t nbytes, int load_addr, int exec
    eofblock();
 }
 
-void Log::putchar(char c)
+void Log::putchar(unsigned char c)
 {
     fputc(c, fc10);
 }
 
-void Log::putchk(char c)
+void Log::putchk(unsigned char c)
 {
     putchar(c);
     chksum += c;
@@ -158,29 +159,29 @@ void Log::spitleader()
      putchar(0x55);
 }
 
-void Log::spitblock(unsigned char *buf, int buflen, int blocktype)
+void Log::spitblock(unsigned char *buf, std::size_t buflen, int blocktype)
 {
    putchar(0x55);   // magic1
    putchar(0x3c);   // magic2
    chksum = 0;
-   putchk(blocktype);   // data block type
-   putchk(buflen); // data length
-   for (int i=0; i<buflen; i++)
+   putchk(static_cast<unsigned char>(blocktype));   // data block type
+   putchk(static_cast<unsigned char>(buflen)); // data length
+   for (std::size_t i=0; i<buflen; i++)
      putchk(buf[i]);
-   putchar(chksum & 0xff); // checksum
+   putchar(static_cast<unsigned char>(chksum & 0xff)); // checksum
    putchar(0x55); // end of block
 }
 
 void Log::filenameblock(char *filearg, int start_addr, int load_addr)
 {
-   int i;
+   std::size_t i;
    unsigned char buf[15];
    std::string filename = filearg;
    std::string head = filename.substr(0,filename.rfind("."));
 
    const char *fname = head.c_str();
    for (i=0; i<strlen(fname) && i<8; i++) 
-     buf[i] = toupper(fname[i]);
+     buf[i] = static_cast<unsigned char>(toupper(fname[i]));
    for (; i<8; i++)
      buf[i] = ' ';
 
@@ -188,16 +189,16 @@ void Log::filenameblock(char *filearg, int start_addr, int load_addr)
    buf[i++] = 0x00; // continuous gap flag
    buf[i++] = 0x00; // continuous gap flag
 
-   buf[i++] = start_addr>>8;
-   buf[i++] = start_addr&0xff;
+   buf[i++] = static_cast<unsigned char>(start_addr>>8);
+   buf[i++] = static_cast<unsigned char>(start_addr&0xff);
 
-   buf[i++] = load_addr>>8;
-   buf[i++] = load_addr&0xff;
+   buf[i++] = static_cast<unsigned char>(load_addr>>8);
+   buf[i++] = static_cast<unsigned char>(load_addr&0xff);
 
    spitblock(buf, i, 0x00);
 }
 
-void Log::datablock(unsigned char *buf, int bufcnt)
+void Log::datablock(unsigned char *buf, std::size_t bufcnt)
 {
    spitblock(buf, bufcnt, 0x01);
 }

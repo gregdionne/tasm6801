@@ -11,7 +11,7 @@ bool CRTable::addlabel(const char *modulename, const char *labelname, int locati
 
 bool CRTable::addlabel(Label lbl)
 {
-  for (int i; i<labels.size(); ++i)
+  for (std::size_t i=0; i<labels.size(); ++i)
     if (labels[i].name == lbl.name) {
       fprintf(stderr,"Duplicate definition of label \"%s\"\n",lbl.name.c_str());
       return false;
@@ -39,7 +39,8 @@ int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modul
    int result;
    std::string offender;
    if (!resolve(r, result, offender))
-      fetcher.die("label \"%s\" must be immediately resolveable for this directive or pseudo-operation",offender.c_str());
+      fetcher.die("label \"%s\" must be immediately resolveable when using \"%s\" or its equivalent pseudo-operation",
+                  offender.c_str(),dir);
 
    return result;
 }
@@ -72,7 +73,7 @@ int CRTable::tentativelyResolve(Reference& r)
 }
 
 bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc) {
-   for (int i=0; i<references.size(); i++) {
+   for (std::size_t i=0; i<references.size(); i++) {
       Reference &r = references[i];
       int result;
       std::string offender;

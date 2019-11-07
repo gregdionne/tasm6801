@@ -9,26 +9,26 @@
 
 class Log {
  public:
-  int argc;
-  char **argv;
+  int argc_;
+  char **argv_;
   Log(int argc, char *argv[]) :
-       argc(argc), argv(argv) {}
+       argc_(argc), argv_(argv) {}
 
   void init(void);
-  void initline(int n, int pc);
+  void initline(std::size_t n, int pc);
   void finish(std::string line);
   void writeObj(unsigned char *binary, size_t nbytes);
   void writeC10(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
   void writeLst(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
 private:
   void writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here);
-  void writeRemaining(int n, int& remaining, unsigned char binary[], int& byte, int& here);
-  void putchar(char c);
-  void putchk(char c);
+  void writeRemaining(std::size_t n, int& remaining, unsigned char binary[], int& byte, int& here);
+  void putchar(unsigned char c);
+  void putchk(unsigned char c);
   void spitleader(void);
-  void spitblock(unsigned char *buf, int buflen, int blocktype);
+  void spitblock(unsigned char *buf, std::size_t buflen, int blocktype);
   void filenameblock(char *filearg, int start_addr, int load_addr);
-  void datablock(unsigned char *buf, int bufcnt);
+  void datablock(unsigned char *buf, std::size_t bufcnt);
   void eofblock(void);
   FILE *flist;
   FILE *fobj;
