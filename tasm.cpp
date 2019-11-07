@@ -336,7 +336,7 @@ void Tasm::doOrg(void) {
 
 
 void Tasm::doModule(void) {
-   char n;
+   int n = 0;
    char *m = modulename;
    fetcher.matchWhitespace();
    while (fetcher.isAlnum()) {
