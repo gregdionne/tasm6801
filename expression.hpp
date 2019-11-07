@@ -32,15 +32,6 @@ public:
  static int bit_or(int x, int y);
 };
 
-template <typename T>
-class pseudorange {
-public:
-  pseudorange(typename T::iterator begin, typename T::iterator end) : begin(begin), current(begin), end(end) {}
-  typename T::iterator begin;
-  typename T::iterator current;
-  typename T::iterator end;
-};
-
 class Expression;
 class Label;
 
