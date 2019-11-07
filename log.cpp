@@ -75,7 +75,7 @@ void Log::writeLst(std::vector<std::string>& lines,
    int byte = 0;
 
    if (endpc-startpc >= binsize)
-      endpc = startpc+binsize-1;
+      endpc = startpc+binsize;
 
    for (std::size_t n=0; n<pc.size(); ++n) {
       initline(n+1,pc[n]);
