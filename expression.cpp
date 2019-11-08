@@ -29,24 +29,6 @@ int OpTable::bit_or(int x, int y) {return x|y;}
 
 OpTable Expression::opTable;
 
-Term::~Term()
-{
-   if (expression && !--expression->refcnt) {
-      delete expression;
-      expression = NULL;
-   }
-}
-
-Term::Term(const Term& t)
-{
-   name = t.name;
-   value = t.value;
-   complements = t.complements;
-   expression = t.expression;
-   if (expression)
-      ++expression->refcnt;
-}
-
 void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    fetcher.skipWhitespace();
@@ -97,8 +79,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    }
 
    if (fetcher.skipChar('(')) {
-      expression = new Expression;
-      expression->refcnt = 1;
+      expression = boo::make_scared<Expression>();
       expression->parse(fetcher, modulename, pc);
       fetcher.skipWhitespace();
       fetcher.matchChar(')');
@@ -171,7 +152,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     offender = name;
     result = value;
 
-    if (expression != NULL) {
+    if (expression.get() != NULL) {
        success = expression->evaluate(labels, offender, result);
        
     } else if (name == "") 

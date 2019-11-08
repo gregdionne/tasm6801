@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include "fetcher.hpp"
+#include "boo.hpp"
 
 class Operator {
 public:
@@ -38,15 +39,13 @@ class Label;
 class Term {
 public:
   Term() : expression(NULL) {}
-  Term(const Term& t);
-  ~Term();
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
 private:
   std::string name;
   int value;
   std::vector<char> complements;
-  Expression* expression; // because C++11 unavail
+  boo::scared_ptr<Expression> expression; // because C++11 unavail
 };
 
 class ExpressionGroup {
@@ -65,11 +64,10 @@ private:
 
 class Expression {
 public:
-  Expression() : refcnt(0) {eg.push_back(ExpressionGroup(&opTable.precedenceGroups, opTable.precedenceGroups.begin()));}
-  Expression(int location) : refcnt(0),value(location) {}
+  Expression() {eg.push_back(ExpressionGroup(&opTable.precedenceGroups, opTable.precedenceGroups.begin()));}
+  Expression(int location) : value(location) {}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
-  int refcnt;
 private:
   std::vector<ExpressionGroup> eg;
   int value;
