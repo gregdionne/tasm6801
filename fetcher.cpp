@@ -399,6 +399,28 @@ int Fetcher::getHexadecimalWord(void)
    return getNumber(isxdigit, xdigit, 16, 0xffff, "hexdecimal digit expected");
 } 
 
+bool Fetcher::recognizePostfixedWord(int (*id)(int),int (*d)(int), int m, int limit, 
+                                     char postfixChar, bool postfixRequired, int &value)
+{
+   if (isNumber(id, d, m, limit)) {
+      int savecol = colnum;
+      value = getNumber(id, d, m, limit, "digit expected");
+      char upperPostfixChar = static_cast<char>(toupper(postfixChar));
+      if (((skipChar(postfixChar) || skipChar(upperPostfixChar) || !postfixRequired) && !isAlnum())) 
+         return true;
+      colnum = savecol;
+   }
+   return false;
+}
+
+bool Fetcher::recognizePostfixedWord(int &value)
+{
+   return recognizePostfixedWord(isxdigit, xdigit, 16, 0xffff, 'h', true, value)
+       || recognizePostfixedWord(isqdigit,  digit,  4, 0xffff, 'q', true, value)
+       || recognizePostfixedWord(isbdigit,  digit,  2, 0xffff, 'b', true, value)
+       || recognizePostfixedWord(isdigit,   digit, 10, 0xffff, 'd', false, value);
+}
+
 int Fetcher::getQuotedLiteral(void)
 {
    if (skipChar('\\')) {
@@ -426,4 +448,5 @@ int Fetcher::getQuotedLiteral(void)
       return getChar();
    }
 }
+
 

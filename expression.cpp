@@ -75,40 +75,8 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       return;
    }
 
-   if (fetcher.isHexadecimalWord()) {
-      int c = fetcher.colnum;
-      int w = fetcher.getHexadecimalWord();
-      if ((fetcher.skipChar('h') || fetcher.skipChar('H')) && !fetcher.isAlnum()) {
-         value = w;
-         return;
-      }
-      fetcher.colnum = c;
-   }     
-
-   if (fetcher.isBinaryWord()) {
-      int c = fetcher.colnum;
-      int w = fetcher.getBinaryWord();
-      if ((fetcher.skipChar('b') || fetcher.skipChar('B')) && !fetcher.isAlnum()) {
-         value = w;
-         return;
-      }
-      fetcher.colnum = c;
-   }     
-      
-   if (fetcher.isQuaternaryWord()) {
-      int c = fetcher.colnum;
-      int w = fetcher.getQuaternaryWord();
-      if ((fetcher.skipChar('q') || fetcher.skipChar('Q')) && !fetcher.isAlnum()) {
-         value = w;
-         return;
-      }
-      fetcher.colnum = c;
-   }     
-
-   if (fetcher.isDecimalWord()) {
-      value = fetcher.getDecimalWord();
+   if (fetcher.recognizePostfixedWord(value))
       return;
-   }
 
    if (fetcher.skipChar('\'')) {
       value = fetcher.getQuotedLiteral();
@@ -122,10 +90,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    }
 
    if (fetcher.isAlpha() || fetcher.isChar('_')) {
-      if (fetcher.isChar('_'))
-         name = modulename;
-      else
-         name = "";
+      name = fetcher.isChar('_') ? modulename : "";
       while (fetcher.isAlnum() || fetcher.isChar('_'))
          name = name + fetcher.getChar();
       return;
@@ -194,7 +159,7 @@ bool ExpressionGroup::evaluate(std::vector<Label>& labels, std::string& offender
 void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    eg[0].parse(fetcher, modulename, pc);
-    
+
    // clobber trailing comments
    if (fetcher.isChar(';'))
       *fetcher.peekLine() = '\n';

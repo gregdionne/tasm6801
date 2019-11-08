@@ -42,7 +42,6 @@ class Fetcher {
   bool peekKeyword(const char *keywords[]);
   bool skipKeyword(const char *keywords[]);
   bool skipToken(const char *token);
-  bool isNumber(int (*id)(int),int (*d)(int), int m, int limit);
   bool isBinaryByte(void);
   bool isQuaternaryByte(void);
   bool isOctalByte(void);
@@ -52,7 +51,6 @@ class Fetcher {
   bool isQuaternaryWord(void);
   bool isDecimalWord(void);
   bool isHexadecimalWord(void);
-  int getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char *errmsg);
   int getBinaryByte(void);
   int getBinaryWord(void);
   int getQuaternaryByte(void);
@@ -64,10 +62,15 @@ class Fetcher {
   int getDecimalWord(void);
   int getQuotedLiteral(void);
 
+  bool recognizePostfixedWord(int &value);
 private:
   FILE *fp;
   bool openNext(void);
   void init(void);
   void expandTabs(char *b, int m, int n);
+  int getNumber(int (*id)(int),int (*d)(int), int m, int limit, const char *errmsg);
+  bool isNumber(int (*id)(int),int (*d)(int), int m, int limit);
+  bool recognizePostfixedWord(int (*id)(int),int (*d)(int), int m, int limit, 
+                                     char postfixChar, bool postfixRequired, int &value);
 };
 #endif
