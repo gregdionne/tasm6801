@@ -1,7 +1,10 @@
-#ifndef PANIC
-#define PANIC
+// Copyright (C) 2019 Greg Dionne
+// Distributed under MIT License
+#ifndef BOO
+#define BOO
 
-// C++98 replacement for std::shared_ptr
+// simpleton C++98 replacement for std::shared_ptr
+
 namespace boo {
 
 template < typename T >
@@ -78,7 +81,15 @@ private:
   T* rawPtr;
 };
 
-// two allocations... 
+// this really isn't a make_shared replacement
+// it's just so we can write:
+//
+//     pScared = boo::make_scared<T>();
+//
+// instead of
+//
+//     pScared = boo::scared_ptr<T> = new T; 
+//
 
 template < typename T >
 scared_ptr<T> make_scared() {
