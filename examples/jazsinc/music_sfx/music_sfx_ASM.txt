@@ -1,0 +1,336 @@
+; assume +16K RAM, RAM is $4000-$8FFF
+
+.MSFIRST        ; Most Significant byte first
+
+    .org $4D90
+	bra		K176	; 32768 branch always to the high-low sound (vulture) call 170006
+	bra		K1726	; 32770 branch always to the low-low high-low sound (sword) call 170026
+	jmp		musicsetup	; set up usr(varptr(m$)) attempt to translate APF music string to MC-10
+; IMPORTANT NOTE:  These routines are all intended to use the text mode of MC-10.
+
+
+soundcnt	.byte 0, 0
+soundtglb	.byte 0, 0
+
+K1726
+	ldaa	#$5f
+	staa	soundcnt
+	ldaa	#$f5
+	staa	soundcnt+1
+	ldaa	#$82
+	ldab	#$35
+	bra		K1726EE
+;--
+K176
+	ldaa	#$5f
+	staa	soundcnt
+	ldaa	#$f5
+	staa	soundcnt+1
+	ldaa	#$6e
+	ldab	#$35
+
+	stab	soundcnt
+	bsr		sndtoggle
+loo1	
+	decb
+	bne		loo1
+	bsr		sndtoggle
+	inc		soundcnt
+	ldab	soundcnt
+loo2 
+	decb
+	bne		loo2
+	ldab	soundcnt
+K1726EE
+	bsr		sndtoggle
+	cmpb	#$5f
+	bne		loo1
+	rts
+	
+;-- Subroutine toggles sound bit
+sndtoggle
+	ldaa	soundtglb
+	eora	#$80
+	staa	$BFFF
+	staa	soundtglb
+	rts
+;--
+
+
+;==========music===================
+
+NATURALS                ; NATURALS C TO B
+#define OCTAVELOW 0
+    .WORD   570, 26    ;  1  130.813 
+    .WORD   508, 29    ;  2  146.832 
+    .WORD   452, 33    ;  3  164.814 
+    .WORD   427, 35    ;  4  174.614 
+    .WORD   380, 39    ;  5  195.998 
+    .WORD   339, 44    ;  6  220 
+    .WORD   302, 49    ;  7  246.942 
+; 4*7
+#define OCTAVEMIDDLE 28
+    .WORD   285, 52    ;  8  261.626 
+	.WORD   254, 59    ;  9  293.665 
+    .WORD   226, 66    ;  10  329.628 
+    .WORD   214, 70    ;  11  349.228 
+    .WORD   190, 78    ;  12  391.995 
+    .WORD   169, 88    ;  13  440 
+    .WORD   151, 99    ;  14  493.883 
+; 4 * 14
+#define OCTAVEHIGH 56
+    .WORD   143, 105    ;  15  523.251 
+    .WORD   127, 117    ;  16  587.33 
+    .WORD   113, 132    ;  17  659.255 
+    .WORD   107, 140    ;  18  698.456 
+    .WORD   95, 157    ;  19  783.991 
+    .WORD   85, 176    ;  20  880 
+    .WORD   75, 198    ;  21  987.767 
+SHARPS                  ; SHARPS C TO B
+    .WORD   538, 28    ;  1  138.591 
+    .WORD   479, 31    ;  2  155.563 
+    .WORD   427, 35    ;  3  174.614 
+    .WORD   403, 37    ;  4  184.997 
+    .WORD   359, 42    ;  5  207.652 
+    .WORD   320, 47    ;  6  233.082 
+    .WORD   285, 52    ;  7  261.626 
+    .WORD   269, 55    ;  8  277.183 
+    .WORD   240, 62    ;  9  311.127 
+    .WORD   214, 70    ;  10  349.228 
+    .WORD   202, 74    ;  11  369.994 
+    .WORD   180, 83    ;  12  415.305 
+    .WORD   160, 93    ;  13  466.164 
+    .WORD   143, 105    ;  14  523.251 
+    .WORD   135, 111    ;  15  554.365 
+    .WORD   120, 124    ;  16  622.254 
+    .WORD   107, 140    ;  17  698.456 
+    .WORD   101, 148    ;  18  739.989 
+    .WORD   90, 166    ;  19  830.609 
+    .WORD   80, 186    ;  20  932.328 
+    .WORD   71, 209    ;  21  1046.5 
+FLATS                   ; FLATS C TO B
+    .WORD   604, 25    ;  1  123.471 
+    .WORD   538, 28    ;  2  138.591 
+    .WORD   479, 31    ;  3  155.563 
+    .WORD   452, 33    ;  4  164.814 
+    .WORD   403, 37    ;  5  184.997 
+    .WORD   359, 42    ;  6  207.652 
+    .WORD   320, 47    ;  7  233.082 
+    .WORD   302, 49    ;  8  246.942 
+    .WORD   269, 55    ;  9  277.183 
+    .WORD   240, 62    ;  10  311.127 
+    .WORD   226, 66    ;  11  329.628 
+    .WORD   202, 74    ;  12  369.994 
+    .WORD   180, 83    ;  13  415.305 
+    .WORD   160, 93    ;  14  466.164 
+    .WORD   151, 99    ;  15  493.883 
+    .WORD   135, 111    ;  16  554.365 
+    .WORD   120, 124    ;  17  622.254 
+    .WORD   113, 132    ;  18  659.255 
+    .WORD   101, 148    ;  19  739.989 
+    .WORD   90, 166    ;  20  830.609 
+    .WORD   80, 186    ;  21  932.328 
+
+
+
+varptr		.word	0	; points to m$ data structure
+varptrtxt	.word	0	; points to actual music string
+strlen		.byte	0	; length of music string
+
+noctave		.word	0	; offset.  0 for /, 64 for 
+nsharpflat	.word	0	; address of natural or sharp or flat table to use
+
+
+ndurationtem	.word 0	
+ndurationtot .word	0	; total duration in times through loop
+nduration	.byte	0	; duration in tenths of second
+notenum		.byte	0	; 0-6
+noteptr		.word	0	; pointer to note/duration entry in note/duration table
+
+wnotedelay	.word	0	; note delay for this note
+wnoteduration		.word	0	; note duration to reload
+wnotedurationtem	.word	0
+
+;mtest	.byte "/1 /2 /3 /4 /5 /6 /7 1 2 3 4 5 6 7 *1 *2 *3 *4 *5 *6 *7"
+;#define MTESTLEN 55
+; mtest	.byte "1 2 3 4 5 6 7"
+; #define MTESTLEN 13
+
+
+noteinitnone
+
+	ldaa	#255
+	staa	notenum
+	ldaa	#1
+	staa	nduration
+	ldx		#OCTAVEMIDDLE
+	stx		noctave
+	ldx		#NATURALS
+	stx		nsharpflat
+	rts
+
+noteplay
+	ldab	notenum
+	cmpb	#255
+	beq		noteplayret
+;	note number in .b
+;	these things should already be set:
+;	noctave, nsharpflat, nduration
+
+	; get note
+	clra
+	lsld
+	lsld		; multiply by four to get offset into table
+	addd	nsharpflat	
+	addd	noctave
+	std		noteptr
+	ldx		noteptr
+	ldd		,x
+	std		wnotedelay
+	inx
+	inx
+	ldd		,x
+	std		wnoteduration
+	std		wnotedurationtem
+
+
+	; this should all be rewritten to use the free running counter
+noteplayloop
+	ldx		wnotedelay
+noteplayloopsm
+	dex
+	bne		noteplayloopsm
+	; toggle sound
+	ldaa	soundtglb
+	eora	#$80
+	staa	$BFFF
+	staa	soundtglb
+	ldx		wnotedurationtem
+	dex
+	stx		wnotedurationtem
+	bne		noteplayloop
+	;
+	ldx		wnoteduration
+	stx		wnotedurationtem
+	dec		nduration
+	bne		noteplayloop	
+	jsr		noteinitnone
+noteplayret
+	rts
+
+
+
+music
+	jsr		$ebc7	; You can JSR $EBC7 to convert the floating point value to an integer in register D.
+	std		varptr
+	ldx		varptr
+	ldaa	0,x		; string length of m$
+	staa	strlen
+	ldaa	2,x			; get address of actual string for m$
+	staa	varptrtxt
+	ldaa	3,x
+	staa	varptrtxt+1	
+
+;	ldaa	#MTESTLEN
+;	staa	strlen
+;	ldd		#mtest
+;	std		varptrtxt
+
+; debate: toggle at beginning? No.
+
+;	initialize
+	jsr		noteinitnone
+
+fetchnoteloop
+;	fetch and process byte from string
+	ldaa	strlen
+	bne		m1continue
+	; no string.  Play note and return
+	jsr		noteplay
+	rts
+
+m1continue
+	ldx		varptrtxt
+	ldaa	,x			; fetch character from music string
+	cmpa	#' '
+	bne		notspace
+	; space
+	jsr		noteplay		; play any pending
+;	jsr		musicspacedelay
+	; musicspacedelay
+	ldx		#14914			; tenth second
+spacedelayloop
+	dex
+	bne		spacedelayloop
+
+
+	jmp		noteinc
+notspace
+	cmpa	#'/'
+	bne		notslash
+	; slash
+	; set octave to 0 here
+	jsr		noteplay		; play any pending
+	ldd		#OCTAVELOW
+	std		noctave
+	jmp		noteinc
+notslash
+	cmpa	#'*'
+	bne		notstar
+	; star
+	; set octave to 2 here
+	jsr		noteplay		; play any pending
+	ldd		#OCTAVEHIGH
+	std		noctave
+	jmp		noteinc
+notstar
+	cmpa	#'-'
+	bne		notminus
+	; minus
+	; set flat here
+	jsr		noteplay		; play any pending
+	ldx		#FLATS
+	stx		nsharpflat
+	jmp		noteinc
+notminus
+	cmpa	#'+'
+	bne		notplus
+	; plus
+	; set sharp here
+	jsr		noteplay		; play any pending
+	ldx		#SHARPS
+	stx		nsharpflat
+	jmp		noteinc
+notplus
+	cmpa	#'0'
+	bne		notzero
+	; zero
+	; add to duration here
+	inc		nduration
+	jmp		noteinc
+notzero		
+	cmpa	#'0'
+	bls		noteinc
+	cmpa	#'9'
+	bhs		noteinc
+	; 1-8 inclusive
+	psha
+	jsr noteplay		; play any pending
+	pula
+	suba	#'1'
+	staa	notenum
+noteinc
+	dec		strlen
+	ldx		varptrtxt
+	inx
+	stx		varptrtxt
+	jmp		fetchnoteloop
+
+musicsetup
+	ldx		#music
+	stx		$4216		; USR vector
+	rts
+
+
+
+    .end

@@ -1,0 +1,821 @@
+
+; big big letters by JazSinc
+; with initialization routines lifted from James Tamer's life-ed
+; assume +16K RAM, RAM is $4000-$8FFF
+
+.MSFIRST        ; Most Significant byte first
+
+
+	.org $4C00
+
+SCREENSTART .EQU $4000
+TEXTSCREENENDP1	.EQU	$4200
+RAMSTART .EQU $4000
+
+	jmp  progmain
+
+introtext	
+			.byte " BIG BIG LETTERS"
+			.byte 13
+			.byte " BY J.E. SINCLAIR JR"
+			.byte 13
+			.byte 13
+			.byte " HIT SPACE BAR TO"
+			.byte 13
+			.byte "   GO TO NEXT SCREEN"
+			.byte 13
+			.byte "   OR BREAK TO QUIT."
+			.byte 13
+			.byte "  "
+			.byte 13
+			.byte "  "
+			.byte 13
+			.byte "  "
+			.byte 13
+			.byte "  "
+			.byte 13
+			.byte 13
+			.byte " "
+			.byte 13
+			.byte " "
+			.byte 13
+			.byte " "
+			.byte 13
+			.byte 13
+			.byte "=HIT SPACE BAR TO START="
+			.byte 0
+
+chardefs
+	.byte	0,0,0,0,0,0,0,0
+	.byte	16,16,16,16,16,0,16,0
+	.byte	40,40,40,0,0,0,0,0
+	.byte	40,40,124,40,124,40,40,0
+	.byte	16,60,80,56,20,120,16,0
+	.byte	96,100,8,16,32,76,12,0
+	.byte	32,80,80,32,84,72,52,0
+	.byte	8,8,16,0,0,0,0,0
+	.byte	16,32,64,64,64,32,16,0
+	.byte	16,8,4,4,4,8,16,0
+	.byte	16,84,56,16,56,84,16,0
+	.byte	0,16,16,124,16,16,0,0
+	.byte	0,0,0,0,16,16,32,0
+	.byte	0,0,0,124,0,0,0,0
+	.byte	0,0,0,0,0,0,16,0
+	.byte	0,4,8,16,32,64,0,0
+	.byte	56,68,76,84,100,68,56,0
+	.byte	16,48,16,16,16,16,56,0
+	.byte	56,68,4,24,32,64,124,0
+	.byte	124,4,8,24,4,68,56,0
+	.byte	8,24,40,72,120,8,8,0
+	.byte	124,64,120,4,4,68,56,0
+	.byte	28,32,64,120,68,68,56,0
+	.byte	124,4,8,16,32,32,32,0
+	.byte	56,68,68,56,68,68,56,0
+	.byte	56,68,68,60,4,8,112,0
+	.byte	0,0,16,0,16,0,0,0
+	.byte	0,0,16,0,16,16,32,0
+	.byte	8,16,32,64,32,16,8,0
+	.byte	0,0,124,0,124,0,0,0
+	.byte	32,16,8,4,8,16,32,0
+	.byte	56,68,8,16,16,0,16,0
+	.byte	56,68,84,92,88,64,56,0
+	.byte	16,40,68,68,124,68,68,0
+	.byte	120,68,68,120,68,68,120,0
+	.byte	56,68,64,64,64,68,56,0
+	.byte	120,68,68,68,68,68,120,0
+	.byte	124,64,64,120,64,64,124,0
+	.byte	124,64,64,120,64,64,64,0
+	.byte	60,64,64,64,76,68,60,0
+	.byte	68,68,68,124,68,68,68,0
+	.byte	56,16,16,16,16,16,56,0
+	.byte	4,4,4,4,4,68,56,0
+	.byte	68,72,80,96,80,72,68,0
+	.byte	64,64,64,64,64,64,124,0
+	.byte	68,108,84,84,68,68,68,0
+	.byte	68,68,100,84,76,68,68,0
+	.byte	56,68,68,68,68,68,56,0
+	.byte	120,68,68,120,64,64,64,0
+	.byte	56,68,68,68,84,72,52,0
+	.byte	120,68,68,120,80,72,68,0
+	.byte	56,68,64,56,4,68,56,0
+	.byte	124,16,16,16,16,16,16,0
+	.byte	68,68,68,68,68,68,56,0
+	.byte	68,68,68,68,68,40,16,0
+	.byte	68,68,68,84,84,108,68,0
+	.byte	68,68,40,16,40,68,68,0
+	.byte	68,68,40,16,16,16,16,0
+	.byte	124,4,8,16,32,64,124,0
+	.byte	124,96,96,96,96,96,124,0
+	.byte	0,64,32,16,8,4,0,0
+	.byte	124,12,12,12,12,12,124,0
+	.byte	0,0,16,40,68,0,0,0
+	.byte	0,0,0,0,0,0,124,0
+	.byte	32,32,16,0,0,0,0,0
+	.byte	0,0,52,76,68,76,52,0
+	.byte	64,64,88,100,68,100,88,0
+	.byte	0,0,28,32,32,32,28,0
+	.byte	4,4,52,76,68,76,52,0
+	.byte	0,0,56,68,124,64,56,0
+	.byte	8,16,16,56,16,16,16,0
+	.byte	0,0,52,76,68,60,4,56
+	.byte	64,64,120,68,68,68,68,0
+	.byte	16,0,48,16,16,16,56,0
+	.byte	8,0,8,8,8,8,8,48
+	.byte	64,64,72,80,112,72,68,0
+	.byte	48,16,16,16,16,16,56,0
+	.byte	0,0,108,82,82,82,82,0
+	.byte	0,0,120,68,68,68,68,0
+	.byte	0,0,56,68,68,68,56,0
+	.byte	0,0,88,100,68,100,88,64
+	.byte	0,0,52,76,68,76,52,6
+	.byte	0,0,88,96,64,64,64,0
+	.byte	0,0,60,64,56,4,120,0
+	.byte	16,16,124,16,16,16,16,0
+	.byte	0,0,68,68,68,68,60,0
+	.byte	0,0,68,68,40,40,16,0
+	.byte	0,0,82,82,82,82,44,0
+	.byte	0,0,68,40,16,40,68,0
+	.byte	0,0,36,36,36,60,4,56
+	.byte	0,0,124,8,16,32,124,0
+	.byte	12,16,16,32,16,16,12,0
+	.byte	16,16,16,0,16,16,16,0
+	.byte	96,16,16,8,16,16,96,0
+	.byte	0,0,4,56,64,0,0,0
+
+
+
+biglettmpw	.word 0
+bigcolor	.byte 128
+;----------
+; drawabigletter, draw a big letter
+;	letter in .a
+;	at txtcursorx,txtcursory
+;	uses:
+;	xtempdst
+;
+	.MODULE MDUNSETGRAPHICS
+drawabigletter
+	tab
+	clra
+	subb	#32				; because we have chardef for ascii 32-127
+
+	lsld
+	lsld
+	lsld				; multiply by 8...
+	addd	#chardefs	; point to chardef we want
+	std		biglettmpw
+
+	clra
+	ldab	txtcursory
+	lsld
+	lsld
+	lsld
+	lsld
+	lsld				; 32*y
+	addd	#SCREENSTART
+	addb	txtcursorx
+	adca	#0			; screenstart + 32*y + x
+	std		xtempdst
+
+
+	ldab	#4
+	stab	btemp
+_chlineloop:
+	; 076+176 054+154 032+132 010+110
+	;  32  10  32  10  32  10  32  10
+
+	ldx		biglettmpw
+	ldaa	,x			; fetch first byte of chardef
+	ldab	1,x			; fetch second byte of chardef
+	anda	#128+64
+	lsrb
+	lsrb
+	aba					; 076+176
+	lsra				;6
+	lsra				;5
+	lsra				;4
+	lsra				;3
+	oraa	bigcolor	; 128+ color*16 + shape
+	ldx		xtempdst
+	staa	,x
+
+	ldx		biglettmpw
+	ldaa	,x			; fetch first byte of chardef
+	ldab	1,x			; fetch second byte of chardef
+	anda	#32+16
+	andb	#32+16
+	lsrb
+	lsrb
+	aba					; 054+154
+	lsra				;4
+	lsra				;3
+	oraa	bigcolor	; 128+ color*16 + shape
+	ldx		xtempdst
+	staa	1,x
+
+	ldx		biglettmpw
+	ldaa	,x			; fetch first byte of chardef
+	ldab	1,x			; fetch second byte of chardef
+	anda	#8+4
+	andb	#8+4
+	lsrb
+	lsrb
+	aba					; 032+132
+	oraa	bigcolor	; 128+ color*16 + shape
+	ldx		xtempdst
+	staa	2,x
+
+	ldx		biglettmpw
+	ldaa	,x			; fetch first byte of chardef
+	ldab	1,x			; fetch second byte of chardef
+	anda	#2+1
+	andb	#2+1
+	lsla
+	lsla
+	aba					; 010+110
+	oraa	bigcolor	; 128+ color*16 + shape
+	ldx		xtempdst
+	staa	3,x
+
+	ldx		biglettmpw
+	inx
+	inx
+	stx		biglettmpw
+	ldx		xtempdst
+	ldab	#32
+	abx
+	stx		xtempdst
+	dec		btemp
+	bne		_chlineloop
+
+_notspace
+	rts
+
+
+; big screen x, y, color, text
+;	1 ends a text line
+;	0 ends the whole screen
+bigscreen1
+	.byte 1,0
+bigsc1col1
+	.byte 0
+	.byte "BIG BIG"
+	.byte 1
+	.byte 2,4
+bigsc1col2
+	.byte 1
+	.byte "LETTERS"
+	.byte 1
+	.byte 1,8
+bigsc1col3
+	.byte 2
+	.byte "ON YOUR"
+	.byte 1
+	.byte 6,12
+bigsc1col4
+	.byte 3
+	.byte "MC-10"
+	.byte 0
+
+
+bigscreen2
+	.byte 0,7,0
+	.byte "A"
+	.byte 1
+	.byte 4,7,1
+	.byte "w"
+	.byte 1
+	.byte 8,7,2
+	.byte "e"
+	.byte 1
+	.byte 12,7,3
+	.byte "s"
+	.byte 1
+	.byte 16,7,4
+	.byte "o"
+	.byte 1
+	.byte 20,7,5
+	.byte "m"
+	.byte 1
+	.byte 24,7,6
+	.byte "e"
+	.byte 1
+	.byte 28,7,7
+	.byte "!"
+	.byte 0
+;----------
+; drawabigscreen, 
+;
+;	.x points to a big screen structure
+	.MODULE drawabigscreen
+
+drawabigscreen
+	pshx
+
+	; clear the screen
+	ldaa	#128	; black blank screen
+	ldx		#512
+	stx		movecount
+	ldx		#SCREENSTART
+	jsr		fillmem
+	; end clear the screen
+
+	pulx
+
+drawabigscreennocls
+_dabsstrloop
+	ldaa	,x
+	staa	txtcursorx
+	ldaa	1,x
+	staa	txtcursory
+	ldaa	2,x			; color 0-7
+	oraa	#8
+	lsla
+	lsla
+	lsla
+	lsla				
+	staa	bigcolor	; store color*16 + 128 for asg4 attribute
+	inx
+	inx
+	inx
+_dabgetletter
+	ldaa	,x
+	beq		_dabsout	; 0 - done with this screen
+	cmpa	#1
+	bne		_dabsgochar
+
+	; 1 - done with this string
+	inx
+	bra		_dabsstrloop	; and go back to fetch next screen string
+	
+_dabsgochar
+	pshx
+	jsr	drawabigletter	
+	pulx
+	inx
+	ldaa	txtcursorx
+	inca
+	inca
+	inca
+	inca
+	staa	txtcursorx
+	bra		_dabgetletter
+
+
+_dabsout
+	rts
+
+;----------
+; unsetgraphics, back to text mode
+;
+	.MODULE MDUNSETGRAPHICS
+unsetgraphics:	
+	clra 
+	staa	$BFFF
+	staa	txtcursorx
+	staa	txtcursory
+	rts
+
+;----------
+; cleartextscreen,
+;
+	.MODULE MDCLEARTEXTSCREEN
+cleartextscreen:	
+	clra 
+	staa	txtcursorx
+	staa	txtcursory
+	ldaa	#32			; space
+	ldx		#SCREENSTART
+_ctslop:
+	staa	,x
+	inx
+	cpx		#TEXTSCREENENDP1
+	bne		_ctslop
+	rts
+
+;----------
+; prnmess, 
+;	print message to text screen, at textcursor,
+;	no scrolling, no sensible checks for memory overrun
+;	or out of bounds
+;	caveat emptor
+;	.x points to null-terminated string
+
+	.MODULE MDPRNMESS
+prnmess
+	clra
+	ldab	txtcursory
+	asld
+	asld
+	asld
+	asld
+	asld
+	addd	#SCREENSTART
+	std		xtempdst
+	stx		xtempsrc
+
+_prnmlop
+	ldx		xtempsrc
+	ldaa	,x
+	beq		_prnmrts
+	inx
+	stx		xtempsrc
+
+	cmpa	#13			; carriage return
+	bne		_prnmstoit
+
+	; carriage return
+	; increment text cursor to next line
+	clra
+	staa	txtcursorx
+	inc		txtcursory
+	; and adjust the destination
+	ldd		xtempdst
+	addd	#32			; one line down
+	andb	#%11100000	; and point to beginning of line
+						; (b is lo byte of d)
+	std		xtempdst
+	bra		_prnmlop
+
+_prnmstoit:
+	ldx		xtempdst
+	anda	%00111111	; reverse video letters
+	staa	,x
+	inx
+	stx		xtempdst
+	inc		txtcursorx
+	ldaa	txtcursorx
+	cmpa	#32			; have we gone to the next line?
+	bne		_prnmlop
+	; increment text cursor to next line
+	clra
+	staa	txtcursorx
+	inc		txtcursory
+	bra		_prnmlop
+	;-
+
+_prnmrts
+	rts
+
+
+
+;----------
+; fillmem
+;	movecount has count, .a has byte, .x has dest
+;	uses xtempdst
+;	count is assumed nonzero!
+	.MODULE MDFILLMEM
+fillmem:
+	stx  xtempdst
+fillmemlop:
+	ldx  xtempdst
+	staa ,x
+	inx
+	stx  xtempdst
+	ldx	 movecount
+	dex
+	stx  movecount
+	bne  fillmemlop
+	rts
+
+;----------
+; copymemnz,
+;	source in xtempsrcnz, dst in xtempdstnz, count in d
+;	Does not use zero page
+	.MODULE MDCOPYMEMNZ
+copymemnz:
+	std  movecountnz
+
+_copymemnzlop:
+	ldx  xtempsrcnz
+	ldaa ,x
+	inx
+	stx  xtempsrcnz
+	ldx  xtempdstnz
+	staa ,x
+	inx
+	stx  xtempdstnz
+	ldx  movecountnz
+	dex
+	stx  movecountnz
+	bne  _copymemnzlop
+	rts
+
+;----------
+; copyup, copy low RAM and screen, etc, up to a higher location
+;	for later restoration.
+	.MODULE MDCOPYUP
+copyup:
+	; copy $80-$ff
+	ldd  #$80
+	std  xtempsrcnz
+	ldx  #storestuff
+	stx  xtempdstnz
+	jsr  copymemnz
+	; copy $4000-$43FF
+	ldx  #RAMSTART
+	stx  xtempsrcnz
+	ldx  #storestuff+128
+	stx  xtempdstnz
+	ldd  #1024
+	jsr copymemnz
+	rts
+
+;----------
+; copyback, restore low RAM and screen from store
+	.MODULE MDCOPYBACK
+copyback:
+	; copy $80-$ff
+	ldd  #$80
+	std  xtempdstnz
+	ldx  #storestuff
+	stx  xtempsrcnz
+	jsr  copymemnz
+	; copy $4000-$43FF
+	ldx  #RAMSTART
+	stx  xtempdstnz
+	ldx  #storestuff+128
+	stx  xtempsrcnz
+	ldd  #1024
+	jsr copymemnz
+	rts
+
+;----------
+; initbss
+;	fill bss with 0
+	.MODULE MDINITBSS
+initbss
+	clra
+	ldx #bss
+_initbsslop
+	staa	,x
+	inx
+	cpx		#bssend
+	bne		_initbsslop
+	rts
+
+
+;----------
+; waitkeyoff
+;	wait til user is not pressing any key
+	.MODULE MDWAITKEYOFF
+waitkeyoff:
+	ldaa #0
+	staa $02
+_waigetoffkeylop:
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_waigetoffkeylop
+	cmpa	#255
+	bne		_waigetoffkeylop
+
+	ldaa	#%01111010	; break ctrl shift
+	staa	$02
+_wbrkshctrl
+	ldaa	$03
+	nop
+	nop
+	cmpa	$03
+	bne		_wbrkshctrl
+	bita	#%00000010
+	beq		_wbrkshctrl
+	rts
+
+;----------
+; waitanykey
+;	wait til user is pressing any key
+	.MODULE MDWAITTHISKEY
+waitanykey:
+	ldaa #0
+	staa $02
+_waipresskeylop:
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_waipresskeylop
+	cmpa	#255
+	beq		_waipresskeylop
+	rts
+
+
+;----------
+; shift
+;	ldaa #%01111111
+;	staa $02
+;	ldaa $03
+;	bita #%00000010
+;	beq pressed
+;
+; shift: #%01111111  #%00000010
+; break: #%11111011  #%00000010
+; ctrl : #%11111110  #%00000010
+;
+; keyboard keys sto to $02 read from $BFFF
+; W #%01111111 #%00000100
+; A #%11111101 #%00000001
+; S #%11110111 #%00000100
+; Z #%11111011 #%00001000
+;
+; Space G L 1 2 C E Q
+; space  #%01111111 #%00001000
+; G #%01111111 #%00000001
+; L #%11101111 #%00000010
+; 1 #%11111101 #%00010000
+; 2 #%11111011 #%00010000
+; C #%11110111 #%00000001
+; E #%11011111 #%00000001
+; Q #%11111101 #%00000100
+
+SHIFTKEY	.EQU %0111111100000010
+BREAKKEY	.EQU %1111101100000010
+SPACEKEY	.EQU %0111111100001000
+GKEY		.EQU %0111111100000001
+LKEY		.EQU %1110111100000010
+WKEY		.EQU %0111111100000100
+AKEY		.EQU %1111110100000001
+SKEY		.EQU %1111011100000100
+ZKEY		.EQU %1111101100001000
+ONEKEY		.EQU %1111110100010000
+TWOKEY		.EQU %1111101100010000
+CKEY		.EQU %1111011100000001
+EKEY		.EQU %1101111100000001
+QKEY		.EQU %1111110100000100
+
+;----------
+; scanspecialkey
+;	d contains specialkey
+;	return with Z set if specialkey pressed
+	.MODULE MDSCANBREAK
+scanspecialkey
+	staa	$02
+	stab	btemp
+_deboncbr
+	nop
+	ldaa	$03
+	nop
+	nop
+	cmpa	$03
+	bne		_deboncbr
+	bita	btemp
+	rts
+
+;----------
+; scankbkey
+;	d contains kbkey
+;	return with Z set if kbkey pressed
+	.MODULE MDSCANBREAK
+scankbkey
+	staa	$02
+	stab	btemp
+_debonckbkey
+	nop
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_debonckbkey
+	bita	btemp
+	rts
+
+
+
+
+;----------
+; waitspacebreak, wait for space or break
+;
+;	return with Z set if Break
+;	return with Z clear if Space
+	.MODULE MDWAITSPACEBREAK
+waitspacebreak:
+_waispace
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		waitspbrout		; if he hit break, exit with zero flag set
+
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_waispace	; wait for space
+	oraa	#1
+	; hit space, return with zero flag cleared
+
+waitspbrout
+	tpa
+	psha
+	jsr		waitkeyoff	; wait for no key
+	oraa	#255
+	staa	$02
+	pula
+	tap
+	rts					
+
+
+
+; temtem
+;	.byte 0
+;----------
+; progmain, main program entry point
+	.MODULE MDPROGMAIN
+
+ 
+progmain:
+	jsr		initbss
+	jsr		copyup
+	jsr		waitkeyoff
+
+	jsr		unsetgraphics
+	jsr		cleartextscreen
+	ldx		#introtext
+	jsr		prnmess
+
+	jsr		waitspacebreak
+	beq		_progmainend		; hit break, jump out
+
+
+	; show screens
+
+	ldx		#bigscreen1
+	jsr		drawabigscreen
+	jsr		waitspacebreak
+	beq		_progmainend		; hit break, jump out
+
+
+_colorloop
+
+	ldx		#6000
+_cldelay
+	dex
+	bne		_cldelay
+
+	inc		bigsc1col1
+	inc		bigsc1col2
+	inc		bigsc1col3
+	inc		bigsc1col4
+	ldx		#bigscreen1
+	jsr		drawabigscreennocls
+
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		_progmainend	; if he hit break, exit
+
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_colorloop
+	;-
+	jsr		waitkeyoff	; wait for no key
+
+	ldx		#bigscreen2
+	jsr		drawabigscreen
+	jsr		waitspacebreak
+	beq		_progmainend		; hit break, jump out
+
+
+
+
+	;------------------------
+	; out
+_progmainend
+	jsr		waitkeyoff	; wait for no key
+	oraa	#255
+	staa	$02
+	jsr  unsetgraphics
+	jsr		copyback
+	rts
+
+;----------
+; bss
+;	bss is initialized to all 0s at the start of the program.
+;	therefore, to save load time, there's no need to save this
+;	area of memory along with the program.
+;	This has to go at the very end of things, of course.
+	.MODULE MDBSS
+bss:
+			.byte "BSSSTART"
+			.WORD 0
+
+xtempsrc:	.WORD  0
+xtempdst:	.WORD  0
+dtemp:		.WORD  0
+movecount:	.WORD  0
+btemp		.byte 0
+
+txtcursorx	.byte 0
+txtcursory	.byte 0
+
+
+xtempsrcnz:		.WORD  0
+xtempdstnz:		.WORD  0
+movecountnz:	.WORD  0
+
+
+; storestuff, enough space to store128+1024 bytes
+storestuff:	.FILL 1152,0	; 1024+128
+
+bssend	.WORD 0
+
+	.end
+
+
+

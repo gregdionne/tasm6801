@@ -1,0 +1,742 @@
+0001   0000             ;***************************************
+0002   0000             ;* MC10 ROTATING ZOOMING CHESSBOARD
+0003   0000             ;* (C)2016 SIMON JONASSEN
+0004   0000             ;*
+0005   0000             ;* ALL CODE IS PUBLIC DOMAIN AND FREE 
+0006   0000             ;* FOR ANY USE YOU SEE FIT....
+0007   0000             ;*
+0008   0000             ;* IF YOU DO USE ANY OF THIS, THEN 
+0009   0000             ;* PLEASE GIVE CREDIT WHERE IT'S DUE
+0010   0000             ;***************************************
+0011   0000             		.msfirst
+0012   4800             		.org		$4800
+0013   4800 0F          start		sei
+0014   4801             
+0015   4801 86 28       		ldaa	#$28		;set videomode
+0016   4803 B7 BF FF    		staa	$bfff		;128*64*4color
+0017   4806 CE 40 00    outloop		ldx	#$4000		;screen start	
+0018   4809             
+0019   4809             
+0020   4809             ;***************************************
+0021   4809             ;* WORK OUT THE DELTAX/Y
+0022   4809             ;***************************************
+0023   4809             
+0024   4809 4F          		clra
+0025   480A F6 4E 00    cosptr		ldab	costab		;(angle in LSB 0..255)
+0026   480D 2A 02       		bpl	noex1
+0027   480F 88 FF       		eora	#$ff		;sign extend for 16bit math
+0028   4811             noex1
+0029   4811             
+0030   4811 FD 49 36    		std	ca1+1
+0031   4814 FD 49 3C    		std	ca2+1
+0032   4817 FD 49 42    		std	ca3+1
+0033   481A FD 49 48    		std	ca4+1
+0034   481D FD 49 4E    		std	ca5+1
+0035   4820 FD 49 54    		std	ca6+1
+0036   4823 FD 49 5A    		std	ca7+1
+0037   4826 FD 49 60    		std	ca8+1
+0038   4829 FD 49 66    		std	ca9+1
+0039   482C FD 49 6C    		std	ca10+1
+0040   482F FD 49 72    		std	ca11+1
+0041   4832 FD 49 78    		std	ca12+1
+0042   4835 FD 49 7E    		std	ca13+1
+0043   4838 FD 49 84    		std	ca14+1
+0044   483B FD 49 8A    		std	ca15+1
+0045   483E FD 49 90    		std	ca16+1
+0046   4841 FD 49 96    		std	ca17+1
+0047   4844 FD 49 9C    		std	ca18+1
+0048   4847 FD 49 A2    		std	ca19+1
+0049   484A FD 49 A8    		std	ca20+1
+0050   484D FD 49 AE    		std	ca21+1
+0051   4850 FD 49 B4    		std	ca22+1
+0052   4853 FD 49 BA    		std	ca23+1
+0053   4856 FD 49 C0    		std	ca24+1
+0054   4859 FD 49 C6    		std	ca25+1
+0055   485C FD 49 CC    		std	ca26+1
+0056   485F FD 49 D2    		std	ca27+1
+0057   4862 FD 49 D8    		std	ca28+1
+0058   4865 FD 49 DE    		std	ca29+1
+0059   4868 FD 49 E4    		std	ca30+1
+0060   486B FD 49 EA    		std	ca31+1
+0061   486E FD 49 F0    		std	ca32+1
+0062   4871             
+0063   4871             	
+0064   4871 4F          		clra	
+0065   4872 05          		asld			;*2 for WORD lookup
+0066   4873 C3 50 00    		addd	#MUL16
+0067   4876 FD 48 7A    		std	lookup1+1
+0068   4879             
+0069   4879 FC 00 00    lookup1		ldd	>$0000
+0070   487C FD 49 0D    		std	d4+1	
+0071   487F 05          		asld			;double the value for the Y
+0072   4880 FD 49 01    		std	d1+1	
+0073   4883             		
+0074   4883 4F          		clra
+0075   4884 F6 4F 00    sinptr		ldab	sintab		;(angle in LSB 0..255)
+0076   4887 2A 02       		bpl	noex2
+0077   4889 88 FF       		eora	#$ff
+0078   488B             noex2		
+0079   488B FD 49 F9    		std	sa1+1
+0080   488E FD 4A 0C    		std	sa2+1
+0081   4891 FD 4A 1F    		std	sa3+1
+0082   4894 FD 4A 32    		std	sa4+1
+0083   4897 FD 4A 45    		std	sa5+1
+0084   489A FD 4A 58    		std	sa6+1
+0085   489D FD 4A 6B    		std	sa7+1
+0086   48A0 FD 4A 7E    		std	sa8+1
+0087   48A3 FD 4A 91    		std	sa9+1
+0088   48A6 FD 4A A4    		std	sa10+1
+0089   48A9 FD 4A B7    		std	sa11+1
+0090   48AC FD 4A CA    		std	sa12+1
+0091   48AF FD 4A DD    		std	sa13+1
+0092   48B2 FD 4A F0    		std	sa14+1
+0093   48B5 FD 4B 03    		std	sa15+1
+0094   48B8 FD 4B 16    		std	sa16+1
+0095   48BB FD 4B 29    		std	sa17+1
+0096   48BE FD 4B 3C    		std	sa18+1
+0097   48C1 FD 4B 4F    		std	sa19+1
+0098   48C4 FD 4B 62    		std	sa20+1
+0099   48C7 FD 4B 75    		std	sa21+1
+0100   48CA FD 4B 88    		std	sa22+1
+0101   48CD FD 4B 9B    		std	sa23+1
+0102   48D0 FD 4B AE    		std	sa24+1
+0103   48D3 FD 4B C1    		std	sa25+1
+0104   48D6 FD 4B D4    		std	sa26+1
+0105   48D9 FD 4B E7    		std	sa27+1
+0106   48DC FD 4B FA    		std	sa28+1
+0107   48DF FD 4C 0D    		std	sa29+1
+0108   48E2 FD 4C 20    		std	sa30+1
+0109   48E5 FD 4C 33    		std	sa31+1
+0110   48E8 FD 4C 46    		std	sa32+1
+0111   48EB             
+0112   48EB             
+0113   48EB             
+0114   48EB 4F          		clra	
+0115   48EC 05          		asld				;*2 for WORD lookup
+0116   48ED C3 50 00    		addd	#MUL16
+0117   48F0 FD 48 F4    		std	lookup2+1
+0118   48F3             
+0119   48F3 FC 00 00    lookup2		ldd	>$0000
+0120   48F6 FD 48 FE    		std	d2+1
+0121   48F9 05          		asld
+0122   48FA FD 49 0A    		std	d3+1			
+0123   48FD             
+0124   48FD CC 00 00    d2		ldd	#0
+0125   4900 83 00 00    d1		subd	#0		
+0126   4903 FD 49 27    		std	yca1+1
+0127   4906             
+0128   4906 CC 00 00    		ldd	#0
+0129   4909 83 00 00    d3		subd	#0		
+0130   490C 83 00 00    d4		subd	#0
+0131   490F FD 49 1B    		std	ysa1+1
+0132   4912             
+0133   4912             ;***************************************
+0134   4912             ;* YLOOP
+0135   4912             ;***************************************
+0136   4912 8C 48 00    yloop		cpx    #$4800		;screen end
+0137   4915 26 03       		bne	ysa1		
+0138   4917 7E 4C 58    		jmp	out
+0139   491A             
+0140   491A CC 00 00    ysa1		ldd	#0		;ysa		;xrot=ysa
+0141   491D FD 49 33    		std	xr1+1
+0142   4920 F3 49 F9    		addd	sa1+1
+0143   4923 FD 49 1B    		std	ysa1+1
+0144   4926             
+0145   4926 CC 00 00    yca1		ldd	#0		;yca		;yrot=yca
+0146   4929 FD 49 F6    		std	yr1+1
+0147   492C F3 49 36    		addd	ca1+1
+0148   492F FD 49 27    		std	yca1+1
+0149   4932             
+0150   4932             
+0151   4932             
+0152   4932             ;***************************************
+0153   4932             ;xloop
+0154   4932             ;***************************************
+0155   4932 CC 00 00    xr1		ldd #0	; xrot
+0156   4935             
+0157   4935 C3 00 00    ca1		addd	#0
+0158   4938 B7 49 FF    		staa 	xk1+1
+0159   493B C3 00 00    ca2		addd	#0
+0160   493E B7 4A 12    		staa 	xk2+1
+0161   4941 C3 00 00    ca3		addd	#0
+0162   4944 B7 4A 25    		staa 	xk3+1
+0163   4947 C3 00 00    ca4		addd	#0
+0164   494A B7 4A 38    		staa 	xk4+1
+0165   494D C3 00 00    ca5		addd	#0
+0166   4950 B7 4A 4B    		staa 	xk5+1
+0167   4953 C3 00 00    ca6		addd	#0
+0168   4956 B7 4A 5E    		staa 	xk6+1
+0169   4959 C3 00 00    ca7		addd	#0
+0170   495C B7 4A 71    		staa 	xk7+1
+0171   495F C3 00 00    ca8		addd	#0
+0172   4962 B7 4A 84    		staa 	xk8+1
+0173   4965 C3 00 00    ca9		addd	#0
+0174   4968 B7 4A 97    		staa 	xk9+1
+0175   496B C3 00 00    ca10		addd	#0
+0176   496E B7 4A AA    		staa 	xk10+1
+0177   4971 C3 00 00    ca11		addd	#0
+0178   4974 B7 4A BD    		staa 	xk11+1
+0179   4977 C3 00 00    ca12		addd	#0
+0180   497A B7 4A D0    		staa 	xk12+1
+0181   497D C3 00 00    ca13		addd	#0
+0182   4980 B7 4A E3    		staa 	xk13+1
+0183   4983 C3 00 00    ca14		addd	#0
+0184   4986 B7 4A F6    		staa 	xk14+1
+0185   4989 C3 00 00    ca15		addd	#0
+0186   498C B7 4B 09    		staa 	xk15+1
+0187   498F C3 00 00    ca16		addd	#0
+0188   4992 B7 4B 1C    		staa 	xk16+1
+0189   4995 C3 00 00    ca17		addd	#0
+0190   4998 B7 4B 2F    		staa 	xk17+1
+0191   499B C3 00 00    ca18		addd	#0
+0192   499E B7 4B 42    		staa 	xk18+1
+0193   49A1 C3 00 00    ca19		addd	#0
+0194   49A4 B7 4B 55    		staa 	xk19+1
+0195   49A7 C3 00 00    ca20		addd	#0
+0196   49AA B7 4B 68    		staa 	xk20+1
+0197   49AD C3 00 00    ca21		addd	#0
+0198   49B0 B7 4B 7B    		staa 	xk21+1
+0199   49B3 C3 00 00    ca22		addd	#0
+0200   49B6 B7 4B 8E    		staa 	xk22+1
+0201   49B9 C3 00 00    ca23		addd	#0
+0202   49BC B7 4B A1    		staa 	xk23+1
+0203   49BF C3 00 00    ca24		addd	#0
+0204   49C2 B7 4B B4    		staa 	xk24+1
+0205   49C5 C3 00 00    ca25		addd	#0
+0206   49C8 B7 4B C7    		staa 	xk25+1
+0207   49CB C3 00 00    ca26		addd	#0
+0208   49CE B7 4B DA    		staa 	xk26+1
+0209   49D1 C3 00 00    ca27		addd	#0
+0210   49D4 B7 4B ED    		staa 	xk27+1
+0211   49D7 C3 00 00    ca28		addd	#0
+0212   49DA B7 4C 00    		staa 	xk28+1
+0213   49DD C3 00 00    ca29		addd	#0
+0214   49E0 B7 4C 13    		staa 	xk29+1
+0215   49E3 C3 00 00    ca30		addd	#0
+0216   49E6 B7 4C 26    		staa 	xk30+1
+0217   49E9 C3 00 00    ca31		addd	#0
+0218   49EC B7 4C 39    		staa 	xk31+1
+0219   49EF C3 00 00    ca32		addd	#0
+0220   49F2 B7 4C 49    		staa 	xk32+1
+0221   49F5             
+0222   49F5             
+0223   49F5             
+0224   49F5             
+0225   49F5 CC 00 00    yr1		ldd	#0
+0226   49F8 83 00 00    sa1		subd	#0
+0227   49FB FD 4A 09    		std	yr2+1
+0228   49FE 8B 00       xk1		adda	#0
+0229   4A00 B7 4A 05    		staa	store1+2
+0230   4A03 B6 4D 80    store1		ldaa	coltab
+0231   4A06 A7 00       		staa	,x
+0232   4A08             
+0233   4A08             
+0234   4A08 CC 00 00    yr2		ldd	#0
+0235   4A0B 83 00 00    sa2		subd	#0
+0236   4A0E FD 4A 1C    		std	yr3+1
+0237   4A11 8B 00       xk2		adda	#0
+0238   4A13 B7 4A 18    		staa	store2+2
+0239   4A16 B6 4D 80    store2		ldaa	coltab
+0240   4A19 A7 01       		staa	1,x
+0241   4A1B             
+0242   4A1B CC 00 00    yr3		ldd	#0
+0243   4A1E 83 00 00    sa3		subd	#0
+0244   4A21 FD 4A 2F    		std	yr4+1
+0245   4A24 8B 00       xk3		adda	#0
+0246   4A26 B7 4A 2B    		staa	store3+2
+0247   4A29 B6 4D 80    store3		ldaa	coltab
+0248   4A2C A7 02       		staa	2,x
+0249   4A2E             
+0250   4A2E CC 00 00    yr4		ldd	#0
+0251   4A31 83 00 00    sa4		subd	#0
+0252   4A34 FD 4A 42    		std	yr5+1
+0253   4A37 8B 00       xk4		adda	#0
+0254   4A39 B7 4A 3E    		staa	store4+2
+0255   4A3C B6 4D 80    store4		ldaa	coltab
+0256   4A3F A7 03       		staa	3,x
+0257   4A41             
+0258   4A41             
+0259   4A41             
+0260   4A41 CC 00 00    yr5		ldd	#0
+0261   4A44 83 00 00    sa5		subd	#0
+0262   4A47 FD 4A 55    		std	yr6+1
+0263   4A4A 8B 00       xk5		adda	#0
+0264   4A4C B7 4A 51    		staa	store5+2
+0265   4A4F B6 4D 80    store5		ldaa	coltab
+0266   4A52 A7 04       		staa	4,x
+0267   4A54             
+0268   4A54             
+0269   4A54 CC 00 00    yr6		ldd	#0
+0270   4A57 83 00 00    sa6		subd	#0
+0271   4A5A FD 4A 68    		std	yr7+1
+0272   4A5D 8B 00       xk6		adda	#0
+0273   4A5F B7 4A 64    		staa	store6+2
+0274   4A62 B6 4D 80    store6		ldaa	coltab
+0275   4A65 A7 05       		staa	5,x
+0276   4A67             
+0277   4A67             
+0278   4A67 CC 00 00    yr7		ldd	#0
+0279   4A6A 83 00 00    sa7		subd	#0
+0280   4A6D FD 4A 7B    		std	yr8+1
+0281   4A70 8B 00       xk7		adda	#0
+0282   4A72 B7 4A 77    		staa	store7+2
+0283   4A75 B6 4D 80    store7		ldaa	coltab
+0284   4A78 A7 06       		staa	6,x
+0285   4A7A             
+0286   4A7A             
+0287   4A7A CC 00 00    yr8		ldd	#0
+0288   4A7D 83 00 00    sa8		subd	#0
+0289   4A80 FD 4A 8E    		std	yr9+1
+0290   4A83 8B 00       xk8		adda	#0
+0291   4A85 B7 4A 8A    		staa	store8+2
+0292   4A88 B6 4D 80    store8		ldaa	coltab
+0293   4A8B A7 07       		staa	7,x
+0294   4A8D             
+0295   4A8D CC 00 00    yr9		ldd	#0
+0296   4A90 83 00 00    sa9		subd	#0
+0297   4A93 FD 4A A1    		std	yr10+1
+0298   4A96 8B 00       xk9		adda	#0
+0299   4A98 B7 4A 9D    		staa	store9+2
+0300   4A9B B6 4D 80    store9		ldaa	coltab
+0301   4A9E A7 08       		staa	8,x
+0302   4AA0             
+0303   4AA0 CC 00 00    yr10		ldd	#0
+0304   4AA3 83 00 00    sa10		subd	#0
+0305   4AA6 FD 4A B4    		std	yr11+1
+0306   4AA9 8B 00       xk10		adda	#0
+0307   4AAB B7 4A B0    		staa	store10+2
+0308   4AAE B6 4D 80    store10		ldaa	coltab
+0309   4AB1 A7 09       		staa	9,x
+0310   4AB3             
+0311   4AB3 CC 00 00    yr11		ldd	#0
+0312   4AB6 83 00 00    sa11		subd	#0
+0313   4AB9 FD 4A C7    		std	yr12+1
+0314   4ABC 8B 00       xk11		adda	#0
+0315   4ABE B7 4A C3    		staa	store11+2
+0316   4AC1 B6 4D 80    store11		ldaa	coltab
+0317   4AC4 A7 0A       		staa	10,x
+0318   4AC6             
+0319   4AC6             
+0320   4AC6 CC 00 00    yr12		ldd	#0
+0321   4AC9 83 00 00    sa12		subd	#0
+0322   4ACC FD 4A DA    		std	yr13+1
+0323   4ACF 8B 00       xk12		adda	#0
+0324   4AD1 B7 4A D6    		staa	store12+2
+0325   4AD4 B6 4D 80    store12		ldaa	coltab
+0326   4AD7 A7 0B       		staa	11,x
+0327   4AD9             
+0328   4AD9             
+0329   4AD9 CC 00 00    yr13		ldd	#0
+0330   4ADC 83 00 00    sa13		subd	#0
+0331   4ADF FD 4A ED    		std	yr14+1
+0332   4AE2 8B 00       xk13		adda	#0
+0333   4AE4 B7 4A E9    		staa	store13+2
+0334   4AE7 B6 4D 80    store13		ldaa	coltab
+0335   4AEA A7 0C       		staa	12,x
+0336   4AEC             
+0337   4AEC             
+0338   4AEC             
+0339   4AEC CC 00 00    yr14		ldd	#0
+0340   4AEF 83 00 00    sa14		subd	#0
+0341   4AF2 FD 4B 00    		std	yr15+1
+0342   4AF5 8B 00       xk14		adda	#0
+0343   4AF7 B7 4A FC    		staa	store14+2
+0344   4AFA B6 4D 80    store14		ldaa	coltab
+0345   4AFD A7 0D       		staa	13,x
+0346   4AFF             
+0347   4AFF             
+0348   4AFF CC 00 00    yr15		ldd	#0
+0349   4B02 83 00 00    sa15		subd	#0
+0350   4B05 FD 4B 13    		std	yr16+1
+0351   4B08 8B 00       xk15		adda	#0
+0352   4B0A B7 4B 0F    		staa	store15+2
+0353   4B0D B6 4D 80    store15		ldaa	coltab
+0354   4B10 A7 0E       		staa	14,x
+0355   4B12             
+0356   4B12             
+0357   4B12 CC 00 00    yr16		ldd	#0
+0358   4B15 83 00 00    sa16		subd	#0
+0359   4B18 FD 4B 26    		std	yr17+1
+0360   4B1B 8B 00       xk16		adda	#0
+0361   4B1D B7 4B 22    		staa	store16+2
+0362   4B20 B6 4D 80    store16		ldaa	coltab
+0363   4B23 A7 0F       		staa	15,x
+0364   4B25             
+0365   4B25             
+0366   4B25 CC 00 00    yr17		ldd	#0
+0367   4B28 83 00 00    sa17		subd	#0
+0368   4B2B FD 4B 39    		std	yr18+1
+0369   4B2E 8B 00       xk17		adda	#0
+0370   4B30 B7 4B 35    		staa	store17+2
+0371   4B33 B6 4D 80    store17		ldaa	coltab
+0372   4B36 A7 10       		staa	16,x
+0373   4B38             
+0374   4B38 CC 00 00    yr18		ldd	#0
+0375   4B3B 83 00 00    sa18		subd	#0
+0376   4B3E FD 4B 4C    		std	yr19+1
+0377   4B41 8B 00       xk18		adda	#0
+0378   4B43 B7 4B 48    		staa	store18+2
+0379   4B46 B6 4D 80    store18		ldaa	coltab
+0380   4B49 A7 11       		staa	17,x
+0381   4B4B             
+0382   4B4B             
+0383   4B4B CC 00 00    yr19		ldd	#0
+0384   4B4E 83 00 00    sa19		subd	#0
+0385   4B51 FD 4B 5F    		std	yr20+1
+0386   4B54 8B 00       xk19		adda	#0
+0387   4B56 B7 4B 5B    		staa	store19+2
+0388   4B59 B6 4D 80    store19		ldaa	coltab
+0389   4B5C A7 12       		staa	18,x
+0390   4B5E             
+0391   4B5E             
+0392   4B5E CC 00 00    yr20		ldd	#0
+0393   4B61 83 00 00    sa20		subd	#0
+0394   4B64 FD 4B 72    		std	yr21+1
+0395   4B67 8B 00       xk20		adda	#0
+0396   4B69 B7 4B 6E    		staa	store20+2
+0397   4B6C B6 4D 80    store20		ldaa	coltab
+0398   4B6F A7 13       		staa	19,x
+0399   4B71             
+0400   4B71             
+0401   4B71 CC 00 00    yr21		ldd	#0
+0402   4B74 83 00 00    sa21		subd	#0
+0403   4B77 FD 4B 85    		std	yr22+1
+0404   4B7A 8B 00       xk21		adda	#0
+0405   4B7C B7 4B 81    		staa	store21+2
+0406   4B7F B6 4D 80    store21		ldaa	coltab
+0407   4B82 A7 14       		staa	20,x
+0408   4B84             
+0409   4B84             
+0410   4B84 CC 00 00    yr22		ldd	#0
+0411   4B87 83 00 00    sa22		subd	#0
+0412   4B8A FD 4B 98    		std	yr23+1
+0413   4B8D 8B 00       xk22		adda	#0
+0414   4B8F B7 4B 94    		staa	store22+2
+0415   4B92 B6 4D 80    store22		ldaa	coltab
+0416   4B95 A7 15       		staa	21,x
+0417   4B97             
+0418   4B97 CC 00 00    yr23		ldd	#0
+0419   4B9A 83 00 00    sa23		subd	#0
+0420   4B9D FD 4B AB    		std	yr24+1
+0421   4BA0 8B 00       xk23		adda	#0
+0422   4BA2 B7 4B A7    		staa	store23+2
+0423   4BA5 B6 4D 80    store23		ldaa	coltab
+0424   4BA8 A7 16       		staa	22,x
+0425   4BAA             
+0426   4BAA             
+0427   4BAA CC 00 00    yr24		ldd	#0
+0428   4BAD 83 00 00    sa24		subd	#0
+0429   4BB0 FD 4B BE    		std	yr25+1
+0430   4BB3 8B 00       xk24		adda	#0
+0431   4BB5 B7 4B BA    		staa	store24+2
+0432   4BB8 B6 4D 80    store24		ldaa	coltab
+0433   4BBB A7 17       		staa	23,x
+0434   4BBD             
+0435   4BBD CC 00 00    yr25		ldd	#0
+0436   4BC0 83 00 00    sa25		subd	#0
+0437   4BC3 FD 4B D1    		std	yr26+1
+0438   4BC6 8B 00       xk25		adda	#0
+0439   4BC8 B7 4B CD    		staa	store25+2
+0440   4BCB B6 4D 80    store25		ldaa	coltab
+0441   4BCE A7 18       		staa	24,x
+0442   4BD0             
+0443   4BD0             
+0444   4BD0 CC 00 00    yr26		ldd	#0
+0445   4BD3 83 00 00    sa26		subd	#0
+0446   4BD6 FD 4B E4    		std	yr27+1
+0447   4BD9 8B 00       xk26		adda	#0
+0448   4BDB B7 4B E0    		staa	store26+2
+0449   4BDE B6 4D 80    store26		ldaa	coltab
+0450   4BE1 A7 19       		staa	25,x
+0451   4BE3             
+0452   4BE3 CC 00 00    yr27		ldd	#0
+0453   4BE6 83 00 00    sa27		subd	#0
+0454   4BE9 FD 4B F7    		std	yr28+1
+0455   4BEC 8B 00       xk27		adda	#0
+0456   4BEE B7 4B F3    		staa	store27+2
+0457   4BF1 B6 4D 80    store27		ldaa	coltab
+0458   4BF4 A7 1A       		staa	26,x
+0459   4BF6             
+0460   4BF6             
+0461   4BF6 CC 00 00    yr28		ldd	#0
+0462   4BF9 83 00 00    sa28		subd	#0
+0463   4BFC FD 4C 0A    		std	yr29+1
+0464   4BFF 8B 00       xk28		adda	#0
+0465   4C01 B7 4C 06    		staa	store28+2
+0466   4C04 B6 4D 80    store28		ldaa	coltab
+0467   4C07 A7 1B       		staa	27,x
+0468   4C09             
+0469   4C09             
+0470   4C09 CC 00 00    yr29		ldd	#0
+0471   4C0C 83 00 00    sa29		subd	#0
+0472   4C0F FD 4C 1D    		std	yr30+1
+0473   4C12 8B 00       xk29		adda	#0
+0474   4C14 B7 4C 19    		staa	store29+2
+0475   4C17 B6 4D 80    store29		ldaa	coltab
+0476   4C1A A7 1C       		staa	28,x
+0477   4C1C             
+0478   4C1C             
+0479   4C1C CC 00 00    yr30		ldd	#0
+0480   4C1F 83 00 00    sa30		subd	#0
+0481   4C22 FD 4C 30    		std	yr31+1
+0482   4C25 8B 00       xk30		adda	#0
+0483   4C27 B7 4C 2C    		staa	store30+2
+0484   4C2A B6 4D 80    store30		ldaa	coltab
+0485   4C2D A7 1D       		staa	29,x
+0486   4C2F             
+0487   4C2F CC 00 00    yr31		ldd	#0
+0488   4C32 83 00 00    sa31		subd	#0
+0489   4C35 FD 4C 43    		std	yr32+1
+0490   4C38 8B 00       xk31		adda	#0
+0491   4C3A B7 4C 3F    		staa	store31+2
+0492   4C3D B6 4D 80    store31		ldaa	coltab
+0493   4C40 A7 1E       		staa	30,x
+0494   4C42             
+0495   4C42 CC 00 00    yr32		ldd	#0
+0496   4C45 83 00 00    sa32		subd	#0
+0497   4C48 8B 00       xk32		adda 	#0
+0498   4C4A B7 4C 4F    		staa	store32+2
+0499   4C4D B6 4D 80    store32		ldaa	coltab
+0500   4C50 A7 1F       plot32		staa	31,x		
+0501   4C52             
+0502   4C52 C6 20       		ldab	#32
+0503   4C54 3A          		abx
+0504   4C55             ;***************************************
+0505   4C55             ;* bottom of yloop
+0506   4C55             ;***************************************
+0507   4C55 7E 49 12    		jmp	yloop
+0508   4C58             ;***************************************
+0509   4C58             ;* yloop done
+0510   4C58             ;***************************************
+0511   4C58 B6 48 0C    out		ldaa	cosptr+2	;angle=angle+1
+0512   4C5B 8B 01       		adda	#1
+0513   4C5D B7 48 0C    		staa	cosptr+2
+0514   4C60             
+0515   4C60 B6 48 86    		ldaa	sinptr+2	;angle=angle+3
+0516   4C63 8B 03       		adda	#3
+0517   4C65 B7 48 86    		staa	sinptr+2
+0518   4C68 7E 48 06    		jmp	outloop	
+0519   4C6B 0000000000000000;***************************************
+0519   4C73 0000000000000000
+0519   4C7B 0000000000000000
+0519   4C83 0000000000000000
+0519   4C8B 0000000000000000
+0519   4C93 0000000000000000
+0519   4C9B 0000000000000000
+0519   4CA3 0000000000000000
+0519   4CAB 0000000000000000
+0519   4CB3 0000000000000000
+0519   4CBB 0000000000000000
+0519   4CC3 0000000000000000
+0519   4CCB 0000000000000000
+0519   4CD3 0000000000000000
+0519   4CDB 0000000000000000
+0519   4CE3 0000000000000000
+0519   4CEB 0000000000000000
+0519   4CF3 0000000000000000
+0519   4CFB 0000000000  
+0520   4D00             		.ORG  (($+0FFH) & 0FF00H)
+0521   4D00             
+0522   4D00 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0522   4D08 00AA00AA00AA00AA
+0523   4D10 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0523   4D18 00AA00AA00AA00AA
+0524   4D20 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0524   4D28 00AA00AA00AA00AA
+0525   4D30 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0525   4D38 00AA00AA00AA00AA
+0526   4D40 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0526   4D48 00AA00AA00AA00AA
+0527   4D50 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0527   4D58 00AA00AA00AA00AA
+0528   4D60 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0528   4D68 00AA00AA00AA00AA
+0529   4D70 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0529   4D78 00AA00AA00AA00AA
+0530   4D80             coltab
+0531   4D80 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0531   4D88 00AA00AA00AA00AA
+0532   4D90 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0532   4D98 00AA00AA00AA00AA
+0533   4DA0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0533   4DA8 00AA00AA00AA00AA
+0534   4DB0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0534   4DB8 00AA00AA00AA00AA
+0535   4DC0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0535   4DC8 00AA00AA00AA00AA
+0536   4DD0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0536   4DD8 00AA00AA00AA00AA
+0537   4DE0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0537   4DE8 00AA00AA00AA00AA
+0538   4DF0 00AA00AA00AA00AA		.byte	$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa,$00,$aa
+0538   4DF8 00AA00AA00AA00AA
+0539   4E00             
+0540   4E00             
+0541   4E00             
+0542   4E00             
+0543   4E00             
+0544   4E00             		.ORG  (($+0FFH) & 0FF00H)
+0545   4E00             ;**********************************************************
+0546   4E00             ;* aligned fixed point sin/cos tables 
+0547   4E00             ;* with zoom (1.2 is scale)
+0548   4E00             ;*
+0549   4E00             ;* formula:
+0550   4E00             ;*
+0551   4E00             ;*  cint(32 * SIN(s * PI / 64) * (COS(s * PI / 64) + 1.2)
+0552   4E00             ;*  cint(32 * COS(s * PI / 64) * (COS(s * PI / 64) + 1.2)
+0553   4E00             ;**********************************************************
+0554   4E00             
+0555   4E00 4646464544434241costab	.byte	70,70,70,69,68,67,66,65,63,61,59,56,54,51,49,46
+0555   4E08 3F3D3B383633312E
+0556   4E10 2B2825221F1C1916	.byte	43,40,37,34,31,28,25,22,19,17,14,11,9,6,4,2
+0556   4E18 13110E0B09060402
+0557   4E20 00FEFDFBFAF9F8F7	.byte	0,-2,-3,-5,-6,-7,-8,-9,-10,-11,-11,-11,-11,-12,-11,-11
+0557   4E28 F6F5F5F5F5F4F5F5
+0558   4E30 F5F5F5F6F6F7F7F7	.byte	-11,-11,-11,-10,-10,-9,-9,-9,-8,-8,-7,-7,-7,-7,-7,-6
+0558   4E38 F8F8F9F9F9F9F9FA
+0559   4E40 FAFAF9F9F9F9F9F8	.byte	-6,-6,-7,-7,-7,-7,-7,-8,-8,-9,-9,-9,-10,-10,-11,-11
+0559   4E48 F8F7F7F7F6F6F5F5
+0560   4E50 F5F5F5F4F5F5F5F5	.byte	-11,-11,-11,-12,-11,-11,-11,-11,-10,-9,-8,-7,-6,-5,-3,-2
+0560   4E58 F6F7F8F9FAFBFDFE
+0561   4E60 00020406090B0E11	.byte	0,2,4,6,9,11,14,17,19,22,25,28,31,34,37,40
+0561   4E68 1316191C1F222528
+0562   4E70 2B2E313336383B3D	.byte	43,46,49,51,54,56,59,61,63,65,66,67,68,69,70,70
+0562   4E78 3F41424344454646
+0563   4E80 4646464544434241	.byte	70,70,70,69,68,67,66,65,63,61,59,56,54,51,49,46
+0563   4E88 3F3D3B383633312E
+0564   4E90 2B2825221F1C1916	.byte	43,40,37,34,31,28,25,22,19,17,14,11,9,6,4,2
+0564   4E98 13110E0B09060402
+0565   4EA0 00FEFDFBFAF9F8F7	.byte	0,-2,-3,-5,-6,-7,-8,-9,-10,-11,-11,-11,-11,-12,-11,-11
+0565   4EA8 F6F5F5F5F5F4F5F5
+0566   4EB0 F5F5F5F6F6F7F7F7	.byte	-11,-11,-11,-10,-10,-9,-9,-9,-8,-8,-7,-7,-7,-7,-7,-6
+0566   4EB8 F8F8F9F9F9F9F9FA
+0567   4EC0 FAFAF9F9F9F9F9F8	.byte	-6,-6,-7,-7,-7,-7,-7,-8,-8,-9,-9,-9,-10,-10,-11,-11
+0567   4EC8 F8F7F7F7F6F6F5F5
+0568   4ED0 F5F5F5F4F5F5F5F5	.byte	-11,-11,-11,-12,-11,-11,-11,-11,-10,-9,-8,-7,-6,-5,-3,-2
+0568   4ED8 F6F7F8F9FAFBFDFE
+0569   4EE0 00020406090B0E11	.byte	0,2,4,6,9,11,14,17,19,22,25,28,31,34,37,40
+0569   4EE8 1316191C1F222528
+0570   4EF0 2B2E313336383B3D	.byte	43,46,49,51,54,56,59,61,63,65,66,67,68,69,70,70
+0570   4EF8 3F41424344454646
+0571   4F00             
+0572   4F00             
+0573   4F00             sintab
+0574   4F00 0003070A0E111417	.byte	0,3,7,10,14,17,20,23,26,29,31,34,36,38,40,42
+0574   4F08 1A1D1F222426282A
+0575   4F10 2B2C2D2E2F2F2F2F	.byte	43,44,45,46,47,47,47,47,47,46,46,45,44,43,41,40
+0575   4F18 2F2E2E2D2C2B2928
+0576   4F20 26252321201E1C1A	.byte	38,37,35,33,32,30,28,26,24,22,21,19,17,16,14,13
+0576   4F28 1816151311100E0D
+0577   4F30 0B0A090807060504	.byte	11,10,9,8,7,6,5,4,3,3,2,2,1,1,1,0
+0577   4F38 0303020201010100
+0578   4F40 0000FFFFFFFEFEFD	.byte	0,0,-1,-1,-1,-2,-2,-3,-3,-4,-5,-6,-7,-8,-9,-10
+0578   4F48 FDFCFBFAF9F8F7F6
+0579   4F50 F5F3F2F0EFEDEBEA	.byte	-11,-13,-14,-16,-17,-19,-21,-22,-24,-26,-28,-30,-32,-33,-35,-37
+0579   4F58 E8E6E4E2E0DFDDDB
+0580   4F60 DAD8D7D5D4D3D2D2	.byte	-38,-40,-41,-43,-44,-45,-46,-46,-47,-47,-47,-47,-47,-46,-45,-44
+0580   4F68 D1D1D1D1D1D2D3D4
+0581   4F70 D5D6D8DADCDEE1E3	.byte	-43,-42,-40,-38,-36,-34,-31,-29,-26,-23,-20,-17,-14,-10,-7,-3
+0581   4F78 E6E9ECEFF2F6F9FD
+0582   4F80 0003070A0E111417	.byte	0,3,7,10,14,17,20,23,26,29,31,34,36,38,40,42
+0582   4F88 1A1D1F222426282A
+0583   4F90 2B2C2D2E2F2F2F2F	.byte	43,44,45,46,47,47,47,47,47,46,46,45,44,43,41,40
+0583   4F98 2F2E2E2D2C2B2928
+0584   4FA0 26252321201E1C1A	.byte	38,37,35,33,32,30,28,26,24,22,21,19,17,16,14,13
+0584   4FA8 1816151311100E0D
+0585   4FB0 0B0A090807060504	.byte	11,10,9,8,7,6,5,4,3,3,2,2,1,1,1,0
+0585   4FB8 0303020201010100
+0586   4FC0 0000FFFFFFFEFEFD	.byte	0,0,-1,-1,-1,-2,-2,-3,-3,-4,-5,-6,-7,-8,-9,-10
+0586   4FC8 FDFCFBFAF9F8F7F6
+0587   4FD0 F5F3F2F0EFEDEBEA	.byte	-11,-13,-14,-16,-17,-19,-21,-22,-24,-26,-28,-30,-32,-33,-35,-37
+0587   4FD8 E8E6E4E2E0DFDDDB
+0588   4FE0 DAD8D7D5D4D3D2D2	.byte	-38,-40,-41,-43,-44,-45,-46,-46,-47,-47,-47,-47,-47,-46,-45,-44
+0588   4FE8 D1D1D1D1D1D2D3D4
+0589   4FF0 D5D6D8DADCDEE1E3	.byte	-43,-42,-40,-38,-36,-34,-31,-29,-26,-23,-20,-17,-14,-10,-7,-3
+0589   4FF8 E6E9ECEFF2F6F9FD
+0590   5000             
+0591   5000             
+0592   5000             	.ORG  (($+0FFH) & 0FF00H)
+0593   5000             ;**********************************************************
+0594   5000             ;* Multiplicaton table as 6803 MUL is unsigned
+0595   5000             ;*
+0596   5000             ;* this also serves as translation from cartesian to
+0597   5000             ;* screen coordinates at the same time
+0598   5000             ;*
+0599   5000             ;* formula:
+0600   5000             ;*
+0601   5000             ;* FOR m = -128 TO 127
+0602   5000             ;*   m16(m)=cint(m * 16) 
+0603   5000             ;* NEXT
+0604   5000             ;*
+0605   5000             ;**********************************************************
+0606   5000             
+0607   5000 F800F810F820F830MUL16	.word	-2048,-2032,-2016,-2000,-1984,-1968,-1952,-1936,-1920,-1904,-1888,-1872,-1856,-1840,-1824,-1808
+0607   5008 F840F850F860F870
+0607   5010 F880F890F8A0F8B0
+0607   5018 F8C0F8D0F8E0F8F0
+0608   5020 F900F910F920F930	.word	-1792,-1776,-1760,-1744,-1728,-1712,-1696,-1680,-1664,-1648,-1632,-1616,-1600,-1584,-1568,-1552
+0608   5028 F940F950F960F970
+0608   5030 F980F990F9A0F9B0
+0608   5038 F9C0F9D0F9E0F9F0
+0609   5040 FA00FA10FA20FA30	.word	-1536,-1520,-1504,-1488,-1472,-1456,-1440,-1424,-1408,-1392,-1376,-1360,-1344,-1328,-1312,-1296
+0609   5048 FA40FA50FA60FA70
+0609   5050 FA80FA90FAA0FAB0
+0609   5058 FAC0FAD0FAE0FAF0
+0610   5060 FB00FB10FB20FB30	.word	-1280,-1264,-1248,-1232,-1216,-1200,-1184,-1168,-1152,-1136,-1120,-1104,-1088,-1072,-1056,-1040
+0610   5068 FB40FB50FB60FB70
+0610   5070 FB80FB90FBA0FBB0
+0610   5078 FBC0FBD0FBE0FBF0
+0611   5080 FC00FC10FC20FC30	.word	-1024,-1008,-992,-976,-960,-944,-928,-912,-896,-880,-864,-848,-832,-816,-800,-784
+0611   5088 FC40FC50FC60FC70
+0611   5090 FC80FC90FCA0FCB0
+0611   5098 FCC0FCD0FCE0FCF0
+0612   50A0 FD00FD10FD20FD30	.word	-768,-752,-736,-720,-704,-688,-672,-656,-640,-624,-608,-592,-576,-560,-544,-528
+0612   50A8 FD40FD50FD60FD70
+0612   50B0 FD80FD90FDA0FDB0
+0612   50B8 FDC0FDD0FDE0FDF0
+0613   50C0 FE00FE10FE20FE30	.word	-512,-496,-480,-464,-448,-432,-416,-400,-384,-368,-352,-336,-320,-304,-288,-272
+0613   50C8 FE40FE50FE60FE70
+0613   50D0 FE80FE90FEA0FEB0
+0613   50D8 FEC0FED0FEE0FEF0
+0614   50E0 FF00FF10FF20FF30	.word	-256,-240,-224,-208,-192,-176,-160,-144,-128,-112,-96,-80,-64,-48,-32,-16
+0614   50E8 FF40FF50FF60FF70
+0614   50F0 FF80FF90FFA0FFB0
+0614   50F8 FFC0FFD0FFE0FFF0
+0615   5100 0000001000200030	.word	0,16,32,48,64,80,96,112,128,144,160,176,192,208,224,240
+0615   5108 0040005000600070
+0615   5110 0080009000A000B0
+0615   5118 00C000D000E000F0
+0616   5120 0100011001200130	.word	256,272,288,304,320,336,352,368,384,400,416,432,448,464,480,496
+0616   5128 0140015001600170
+0616   5130 0180019001A001B0
+0616   5138 01C001D001E001F0
+0617   5140 0200021002200230	.word	512,528,544,560,576,592,608,624,640,656,672,688,704,720,736,752
+0617   5148 0240025002600270
+0617   5150 0280029002A002B0
+0617   5158 02C002D002E002F0
+0618   5160 0300031003200330	.word	768,784,800,816,832,848,864,880,896,912,928,944,960,976,992,1008
+0618   5168 0340035003600370
+0618   5170 0380039003A003B0
+0618   5178 03C003D003E003F0
+0619   5180 0400041004200430	.word	1024,1040,1056,1072,1088,1104,1120,1136,1152,1168,1184,1200,1216,1232,1248,1264
+0619   5188 0440045004600470
+0619   5190 0480049004A004B0
+0619   5198 04C004D004E004F0
+0620   51A0 0500051005200530	.word	1280,1296,1312,1328,1344,1360,1376,1392,1408,1424,1440,1456,1472,1488,1504,1520
+0620   51A8 0540055005600570
+0620   51B0 0580059005A005B0
+0620   51B8 05C005D005E005F0
+0621   51C0 0600061006200630	.word	1536,1552,1568,1584,1600,1616,1632,1648,1664,1680,1696,1712,1728,1744,1760,1776
+0621   51C8 0640065006600670
+0621   51D0 0680069006A006B0
+0621   51D8 06C006D006E006F0
+0622   51E0 0700071007200730	.word	1792,1808,1824,1840,1856,1872,1888,1904,1920,1936,1952,1968,1984,2000,2016,2032
+0622   51E8 0740075007600770
+0622   51F0 0780079007A007B0
+0622   51F8 07C007D007E007F0
+0623   5200             
+0624   5200             
+0625   5200             
+0626   5200             
+0627   5200             
+0628   5200             	.end 	start
