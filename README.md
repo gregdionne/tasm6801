@@ -1,5 +1,5 @@
 # tasm6801
-Simple [Telemark](http://www.s100computers.com/Software%20Folder/6502%20Monitor/The%20Telemark%20Assembler%20Manual.pdf)-like assembler for the Motorola 6801/6803 processor for use with linux/OS-X.  Intended to be used in conjunction with various emulators of the TRS80 MC-10 (most notably James Tamer's "Virtual MC-10").
+Simple [Telemark](http://www.s100computers.com/Software%20Folder/6502%20Monitor/The%20Telemark%20Assembler%20Manual.pdf)-like assembler for the Motorola 6801/6803 processor for use with linux/OS-X.  Intended to be used in conjunction with various emulators of the TRS-80 MC-10 (most notably James Tamer's "Virtual MC-10").
 
 ## Compatibility and Extensions
 Supported directives and their corresponding pseudo-op's are:
