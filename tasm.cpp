@@ -25,7 +25,7 @@ static const char *mnemonics[]={
     /*90*/ "BSR","BCC","BCS","ASLD","ASLA","ASLB","ASL",0};
 
 static const char *macros[]={"#define",0};
-static const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".nstring",".cstring",".byte",".word",".fill",".block",0};
+static const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".strs",".strz",".byte",".word",".fill",".block",0};
 static const char *pseudo_ops[]={".msfirst","org",".execstart","end","equ",".module","fcc","fcs","fcn","fcb","fdb","rzb","rmb",0};
 
 void Tasm::validateObj()
@@ -259,12 +259,19 @@ void Tasm::doFill(void) {
 
 void Tasm::doText(void) {
    fetcher.matchWhitespace();
-   char delim = fetcher.peekChar();
-   if (!fetcher.skipChar('\''))
-      fetcher.matchChar('"');
-   while (!fetcher.isChar(delim) && !fetcher.iseol())
-      writeByte(static_cast<unsigned char>(fetcher.getQuotedLiteral()));
-   fetcher.matchChar(delim);
+   do {
+     fetcher.skipWhitespace();
+     char delim = fetcher.peekChar();
+     if (delim == '\'' || delim == '"') {
+        fetcher.matchChar(delim);
+        while (!fetcher.isChar(delim) && !fetcher.iseol())
+           writeByte(static_cast<unsigned char>(fetcher.getQuotedLiteral()));
+        fetcher.matchChar(delim);
+     } else {
+        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
+     }
+     fetcher.skipWhitespace();
+   } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
 }
 
@@ -372,9 +379,9 @@ void Tasm::doDirective(void) {
       doWord();
    else if (!strcmp(directives[fetcher.keyID],".text"))
       doText();
-   else if (!strcmp(directives[fetcher.keyID],".nstring"))
+   else if (!strcmp(directives[fetcher.keyID],".strs"))
       doNString();
-   else if (!strcmp(directives[fetcher.keyID],".cstring"))
+   else if (!strcmp(directives[fetcher.keyID],".strz"))
       doCString();
    else if (!strcmp(directives[fetcher.keyID],".msfirst"))
       doMSFirst();
