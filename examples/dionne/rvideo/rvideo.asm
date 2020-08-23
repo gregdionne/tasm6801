@@ -3,7 +3,7 @@ scnwdth	.equ	$20	; screen width
 fretop	.equ	$9b	; upperbound of stack
 himem	.equ	$a1	; higest RAM address used by BASIC
 tmp	.equ	$cc	; temp storage in floating point result
-devnum	.equ	$e8	; current i/o device number:  0 = screen; -2 = printer
+devnum	.equ	$e8	; current i/o device number:  0 = screen; -1 = printer
 chrget	.equ	$eb	; get next input character
 
 scnstrt	.equ	$4000	; screen start
@@ -33,7 +33,7 @@ _start	pulx
 	stx	fretop
 	lds	topram
 	ins
-	ldx	#ALLDONE
+	ldx	#progend
 _again	dex
 	ldaa	,x
 	psha
@@ -54,16 +54,16 @@ _again	dex
 	std	exec	; default EXEC address
 	subd	#flipscn
 	std	tmp
-	ldd	#EXWRMBT
+	ldd	#exwrmst
 	addd	tmp
 	std	wmstart
-	ldd	#EXCURSR
+	ldd	#excin
 	addd	tmp
 	std	cns_in+1
-	ldd	#EXTCLS
+	ldd	#excmd
 	addd	tmp
 	std	cmd_ext+1
-	ldd	#EXTSCN
+	ldd	#extcout
 	addd	tmp
 	std	cns_out+1
 	pshx
@@ -83,7 +83,7 @@ _flip2	inx
 	rts
 
 ; console out extension
-EXTSCN	.module extscn
+extcout	.module ConsoleOut
 	pshx
 	pshb
 	psha
@@ -132,7 +132,7 @@ _again	ldd     $20,x
 	inx
 	cpx    	#scnend-scnwdth
 	bne     _again
-	ldab    #$20		; 60 FOR NORMAL
+	ldab    #' '		; load space
 	jsr     clrscn+3	; clear to end of screen
 _leave	pula    
 	pulb    
@@ -141,7 +141,7 @@ _leave	pula
 	ins
 	rts
 
-EXWRMBT	.module warmstart
+exwrmst	.module WarmStart
 	nop
 	clr	devnum
 	jsr	clrstr
@@ -149,7 +149,7 @@ EXWRMBT	.module warmstart
 	jsr	clrscn	
 	jmp	okprmpt
 
-EXCURSR	.module consoleext
+excin	.module ConsoleIn
 	ins
 	ins
 	pshx
@@ -165,7 +165,7 @@ _again	jsr	blink
 	rts
 
 
-EXTCLS	.module commandext
+excmd	.module CommandExtension
 	cmpa	#$9D
 	beq	_gotcls
 	rts
@@ -181,6 +181,6 @@ _cls1	jmp	clsarg
 _cls2	ldab	#$20
 	jmp	clrscn
 
-ALLDONE	.end
+progend	.end
 
 
