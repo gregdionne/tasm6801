@@ -106,7 +106,7 @@ dodigs	stx	numdig	; store desired number of digits.
 	rts		; return to BASIC
 
 
-.MODULE Addang
+.MODULE AddAng
 ;	add angular power to accumulator
 addang
 	sts	svstack
@@ -127,7 +127,7 @@ _again	des
 	rts
 
 
-.MODULE	Tsttrm
+.MODULE	TstTrm
 ;	set Z flag if term is zero
 tsttrm
 	ldx	trm_lsb
@@ -140,7 +140,7 @@ _again	tst	,x
 _rts	rts
 
 
-.MODULE Atninit
+.MODULE AtnInit
 ;	initialize new arctanget
 atninit
 	ldx	ang_msb
@@ -184,7 +184,7 @@ _again	ldd	coeff_r
 divrts	rts
 
 
-.MODULE Newtrm
+.MODULE NewTrm
 ;	compute new term  (angular power / coeff_r)
 ;	
 ;	
@@ -596,7 +596,7 @@ _done	lds	svstack
 	rts
 
 
-.MODULE subtrm
+.MODULE SubTrm
 ;	subtract term from accumulator
 subtrm
 	sts	svstack
