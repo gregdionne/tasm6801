@@ -1,0 +1,1747 @@
+; assume +16K RAM, RAM is $4000-$8FFF
+
+.MSFIRST        ; Most Significant byte first
+
+
+	.org $4C00
+
+SCREENSTART .EQU $4000
+TEXTSCREENENDP1	.EQU	$4200
+RAMSTART .EQU $4000
+
+; Zero page variables
+; xtempsrc:	.WORD  0
+xtempsrc	.EQU $00BA
+; xtempdst:	.WORD  0
+xtempdst	.EQU $00BC
+; dtemp:		.WORD  0
+dtemp		.EQU $00BE
+; movecount:	.WORD  0
+movecount	.EQU $00C9
+; rottemp		.byte  0
+rottemp		.EQU $00CB
+; btemp		.byte 0
+btemp		.EQU $00CC
+; cellstatetemp	.BYTE 0
+cellstatetemp	.EQU $00CD
+; gonelinedestn	.byte 0
+gonelinedestn	.EQU $00CE
+
+
+
+	jmp  progmain
+	nop
+;- - - - - - - - -
+
+; I am putting this stuff in variables so we can use
+;	other multicolor vidmodes with the same code
+;	Yes, it would be faster to choose one and use # immediate
+;	data, I know.
+
+
+
+lgrmode		.byte 32 ; 32	; 64x64 multicolor
+lnscanlines	.byte 64
+lnvidbytesperrow	.byte 16
+lnpixelsperrow	.byte 64
+lnpixelsperrowp2	.byte 66	; npixelsperrow + 2
+lnvidmulshifts	.byte 4		; number of shifts to multiply by nvidbytesperrow
+lnvidbytesperscreen	.WORD	1024	; number of bytes in screen
+lnbitpatterns	.byte 0		; not used
+lgrmodeend .byte 0	; dummy
+GRMODESIZE	.EQU lgrmodeend-lgrmode
+
+
+; hfileheader	.byte "LIFE"
+hgrmode		.byte 36 ; 4+32	; 128x96 multicolor
+hnscanlines	.byte 96
+hnvidbytesperrow	.byte 32
+hnpixelsperrow	.byte 128
+hnpixelsperrowp2	.byte 130	; npixelsperrow + 2
+hnvidmulshifts	.byte 5		; number of shifts to multiply by nvidbytesperrow
+hnvidbytesperscreen	.WORD	3072	; number of bytes in screen
+hnbitpatterns	.byte 0		; not used
+hgrmodeend .byte 0	; dummy
+
+introtext	
+			.byte " LIFE-ED"
+			.byte 13
+			.byte " BY JAMES TAMER"
+			.byte 13
+			.byte 13
+			.byte " IN EDIT MODE:"
+			.byte 13
+			.byte "  WASZ TO MOVE CURSOR"
+			.byte 13
+			.byte "  SPACE BAR TO TOGGLE CELL"
+			.byte 13
+			.byte "  SHIFT G GENERATIONS MODE"
+			.byte 13
+			.byte "  SHIFT L LOAD  * SHIFT S SAVE"
+			.byte 13
+			.byte "  SHIFT 1 LORES * SHIFT 2 HIRES"
+			.byte 13
+			.byte "  SHIFT C CLEAR * BREAK QUIT"
+			.byte 13
+			.byte 13
+			.byte " IN GENERATIONS MODE:"
+			.byte 13
+			.byte "  SHIFT E EDIT"
+			.byte 13
+			.byte "  BREAK QUIT"
+			.byte 13
+			.byte 13
+			.byte "=HIT SPACE BAR TO START="
+			.byte 0
+
+savingtextpre
+			.byte " PREPARE TO SAVE"
+			.byte 13
+			.byte 13
+			.byte " PRESS RECORD AND PLAY"
+			.byte 13
+			.byte " THEN PRESS THE SPACE BAR"
+			.byte 13
+			.byte 13
+			.byte 0
+
+savingtext
+			.byte " SAVING, PLEASE WAIT..."
+			.byte 13
+			.byte 0
+
+loadingtextpre
+			.byte " PREPARE TO LOAD"
+			.byte 13
+			.byte 13
+			.byte " PRESS PLAY"
+			.byte 13
+			.byte " THEN PRESS THE SPACE BAR"
+			.byte 13
+			.byte 13
+			.byte 0
+
+loadingtext
+			.byte " LOADING, PLEASE WAIT..."
+			.byte 13
+			.byte 13
+			.byte 0
+
+notasavefiletext
+			.byte " THIS ISN'T A LIFE-ED SAVE FILE"
+			.byte 13
+			.byte " PRESS ANY KEY TO CONTINUE"
+			.byte 13
+			.byte 0
+
+
+;----------
+; copymem,
+;	source in xtempsrc, dst in xtempdst, count in d
+	.MODULE MDCOPYMEM
+copymem:
+	std  movecount
+
+copymemlop:
+	ldx  xtempsrc
+	ldaa ,x
+	inx
+	stx  xtempsrc
+	ldx  xtempdst
+	staa ,x
+	inx
+	stx  xtempdst
+	ldx  movecount
+	dex
+	stx  movecount
+	bne  copymemlop
+	rts
+
+
+;----------
+; copymemnz,
+;	source in xtempsrcnz, dst in xtempdstnz, count in d
+;	Does not use zero page
+	.MODULE MDCOPYMEMNZ
+copymemnz:
+	std  movecountnz
+
+_copymemnzlop:
+	ldx  xtempsrcnz
+	ldaa ,x
+	inx
+	stx  xtempsrcnz
+	ldx  xtempdstnz
+	staa ,x
+	inx
+	stx  xtempdstnz
+	ldx  movecountnz
+	dex
+	stx  movecountnz
+	bne  _copymemnzlop
+	rts
+
+
+;----------
+; cmpmem,
+;	compare memory, return Z set if equal.  Z clear if unequal.
+;	source in xtempsrc, dst in xtempdst, count in d
+;
+	.MODULE MDCMPMEM
+cmpmem:
+	std  movecount
+
+cmpmemlop:
+	ldx  xtempsrc
+	ldaa ,x
+	inx
+	stx  xtempsrc
+
+	ldx		xtempdst
+	cmpa	,x
+	bne		cmpmemout	; memory blocks are unequal - return
+	inx
+	stx		xtempdst
+
+	ldx  movecount
+	dex
+	stx  movecount
+	bne  copymemlop
+	; Z flag is set, here, if we've gone through all the
+	;	memory we wanted to compare
+
+cmpmemout:
+	rts
+
+
+;----------
+; copyup, copy low RAM and screen, etc, up to a higher location
+;	for later restoration.
+	.MODULE MDCOPYUP
+copyup:
+	; copy $80-$ff
+	ldd  #$80
+	std  xtempsrcnz
+	ldx  #storestuff
+	stx  xtempdstnz
+	jsr  copymemnz
+	; copy $4000-$43FF
+	ldx  #RAMSTART
+	stx  xtempsrcnz
+	ldx  #storestuff+128
+	stx  xtempdstnz
+	ldd  #1024
+	jsr copymemnz
+	rts
+
+;----------
+; copyback, restore low RAM and screen from store
+	.MODULE MDCOPYBACK
+copyback:
+	; copy $80-$ff
+	ldd  #$80
+	std  xtempdstnz
+	ldx  #storestuff
+	stx  xtempsrcnz
+	jsr  copymemnz
+	; copy $4000-$43FF
+	ldx  #RAMSTART
+	stx  xtempdstnz
+	ldx  #storestuff+128
+	stx  xtempsrcnz
+	ldd  #1024
+	jsr copymemnz
+	rts
+
+;----------
+; setgraphics, turn on graphics mode
+;
+	.MODULE MDSETGRAPHICS
+setgraphics:	
+	ldaa grmode
+	staa $BFFF
+	rts
+
+;----------
+; unsetgraphics, back to text mode
+;
+	.MODULE MDUNSETGRAPHICS
+unsetgraphics:	
+	clra 
+	staa	$BFFF
+	staa	txtcursorx
+	staa	txtcursory
+	rts
+
+;----------
+; cleartextscreen,
+;
+	.MODULE MDCLEARTEXTSCREEN
+cleartextscreen:	
+	clra 
+	staa	txtcursorx
+	staa	txtcursory
+	ldaa	#32			; space
+	ldx		#SCREENSTART
+_ctslop:
+	staa	,x
+	inx
+	cpx		#TEXTSCREENENDP1
+	bne		_ctslop
+	rts
+
+;----------
+; prnmess, 
+;	print message to text screen, at textcursor,
+;	no scrolling, no sensible checks for memory overrun
+;	or out of bounds
+;	caveat emptor
+;	.x points to null-terminated string
+
+	.MODULE MDPRNMESS
+prnmess
+	clra
+	ldab	txtcursory
+	asld
+	asld
+	asld
+	asld
+	asld
+	addd	#SCREENSTART
+	std		xtempdst
+	stx		xtempsrc
+
+_prnmlop
+	ldx		xtempsrc
+	ldaa	,x
+	beq		_prnmrts
+	inx
+	stx		xtempsrc
+
+	cmpa	#13			; carriage return
+	bne		_prnmstoit
+
+	; carriage return
+	; increment text cursor to next line
+	clra
+	staa	txtcursorx
+	inc		txtcursory
+	; and adjust the destination
+	ldd		xtempdst
+	addd	#32			; one line down
+	andb	#%11100000	; and point to beginning of line
+						; (b is lo byte of d)
+	std		xtempdst
+	bra		_prnmlop
+
+_prnmstoit:
+	ldx		xtempdst
+	anda	%00111111	; reverse video letters
+	staa	,x
+	inx
+	stx		xtempdst
+	inc		txtcursorx
+	ldaa	txtcursorx
+	cmpa	#32			; have we gone to the next line?
+	bne		_prnmlop
+	; increment text cursor to next line
+	clra
+	staa	txtcursorx
+	inc		txtcursory
+	bra		_prnmlop
+	;-
+
+_prnmrts
+	rts
+
+
+;----------
+; fillmem
+;	movecount has count, .a has byte, .x has dest
+;	uses xtempdst
+;	count is assumed nonzero!
+fillmem:
+	stx  xtempdst
+fillmemlop:
+	ldx  xtempdst
+	staa ,x
+	inx
+	stx  xtempdst
+	ldx	 movecount
+	dex
+	stx  movecount
+	bne  fillmemlop
+	rts
+
+;----------
+; cleargrscreen
+cleargrscreen
+	ldaa #0
+	ldx  nvidbytesperscreen
+	stx  movecount
+	ldx  #SCREENSTART
+	jsr  fillmem
+	rts
+
+
+;---------- LIFE
+
+; shifted multicolor bit patterns for zero color
+ZEROPATTERN4 .EQU %00000000
+ZEROPATTERN3 .EQU %00000000
+ZEROPATTERN2 .EQU %00000000
+ZEROPATTERN1 .EQU %00000000
+ZEROPATTERNALL	.EQU %00000000
+
+OLDCELLPATTERN1	.EQU %00000011
+
+
+
+NEWCELLPATTERN4	.EQU %10000000
+NEWCELLPATTERN3	.EQU %00100000
+NEWCELLPATTERN2	.EQU %00001000
+NEWCELLPATTERN1	.EQU %00000010
+
+
+;----------
+; makepixelxlattbl
+;	calculate bytes needed for expanding a screen line
+;	one multicolor byte -> four msbits
+	.MODULE MDMAKEPIXELXLATTBL
+makepixelxlattbl:
+	clrb
+	stab	btemp
+
+	ldx		#pixelxlattbl	; destination
+_mkxlatlop:
+	clr		,x
+	ldab	btemp
+	ldaa	#4		; four bits per byteprocessed (multicolor)
+	staa	rottemp
+
+_mkbitslop
+	tba
+	anda	#%00000011
+	cmpa	#ZEROPATTERN1
+	beq		_clrbit
+	; not a zero pattern, so set it
+	sec
+	bra		_rotit
+_clrbit
+	clc
+_rotit
+	ror		,x
+
+	lsrb
+	lsrb
+	dec		rottemp
+	bne		_mkbitslop
+
+	inx
+	inc		btemp
+	bne		_mkxlatlop
+	rts
+
+;----------
+; expscreenline,
+;	expand the screen line into my buffer
+;	.b has line
+;	.x has dest
+
+	.MODULE MDEXPSCREENLINE
+expscreenline:
+	ldaa	nvidbytesperrow
+	staa	movecount
+	ldaa	nvidmulshifts
+	staa	rottemp
+
+	clra
+
+	inx
+	stx	xtempdst
+
+	cmpb #255
+	beq _fillzero
+	cmpb nscanlines
+	bge	_fillzero
+
+_scnmullop:
+	asld
+	dec		rottemp
+	bne		_scnmullop
+
+	addd	#SCREENSTART
+	std		dtemp
+	ldx		dtemp		; point to the screen line we want
+
+_getscrbyte:
+	ldab	,x
+	pshx
+
+;	ldx		xtempdst
+;_keeptesting:
+;	tab
+;	anda	#%11000000
+;	cmpa	#ZEROPATTERN4
+;	beq		_zer1
+;	ldaa	#1
+;	bra		_sto1
+;_zer1:
+;	clra
+;_sto1:
+;	staa	,x
+;	inx
+;
+;	tba
+;	anda	#%00110000
+;	cmpa	#ZEROPATTERN3
+;	beq		_zer2
+;	ldaa	#1
+;	bra		_sto2
+;_zer2:
+;	clra
+;_sto2:
+;	staa	,x
+;	inx
+;	tba
+;	anda	#%00001100
+;	cmpa	#ZEROPATTERN2
+;	beq		_zer3
+;	ldaa	#1
+;	bra		_sto3
+;_zer3:
+;	clra
+;_sto3:
+;	staa	,x
+;	inx
+;
+;	tba
+;	anda	#%00000011
+;	cmpa	#ZEROPATTERN1
+;	beq		_zer4
+;	ldaa	#1
+;	bra		_sto4
+;_zer4:
+;	clra
+;_sto4:
+;	staa	,x
+;	inx
+
+	ldx		#pixelxlattbl
+	abx						; point to xlat
+	ldab	,x				; get xlat byte in .b (four msbits)
+	ldx		xtempdst		; where to store it
+	clra
+	lslb
+	rola
+	staa	0,x
+	clra
+	lslb
+	rola
+	staa	1,x
+	clra
+	lslb
+	rola
+	staa	2,x
+	clra
+	lslb
+	rola
+	staa	3,x
+	ldab	#4
+	abx						; slightly more efficient than inxing each time
+
+_gonextbyte
+	stx		xtempdst
+	pulx	; retrieve screen source addr
+	inx	
+	dec		movecount
+	bne		_getscrbyte
+	rts
+
+_fillzero:
+	clra
+	ldab	npixelsperrow
+_fillzlop:
+	staa	,x
+	inx
+	decb
+	bne		_fillzlop
+	rts
+
+;----------
+; dolifelineexp
+;	
+;	
+
+
+	.MODULE MDDOLIFELINEEXP
+dolifelineexp:
+
+	ldaa	npixelsperrow
+	staa	movecount
+
+	clrb
+	stab	btemp	; use b and btemp as x coordinate
+
+;	ldx		expline0addr
+;	stx		xtempsrc
+
+	ldx		#explinedst
+_dolinelop:
+	inx
+	stx		xtempdst
+
+	ldx		expline0addr
+	; ldab	btemp
+	abx
+
+	ldaa	0,x
+	adda	1,x
+	adda	2,x
+;	ldab	npixelsperrowp2		; 130
+;	abx				; x=x + b
+
+	ldx		expline1addr
+	; ldab	btemp
+	abx
+
+	adda	0,x
+	ldab	1,x				; get state of center dot (do not add it)
+	stab	cellstatetemp	; state of center dot (do not add it)
+	adda	2,x
+
+;	ldab	npixelsperrowp2		; 130
+;	abx				; x=x + b
+
+	ldx		expline2addr
+	ldab	btemp			; need to fetch again because we clobbered b above
+	abx
+
+	adda	0,x
+	adda	1,x
+	adda	2,x
+
+	beq		_celldead	; z set/cleared by add above
+	cmpa	#3
+	bgt		_celldead
+	beq		_cellborn
+	cmpa	#2
+	beq		_testold
+_celldead:
+	ldaa	#ZEROPATTERN1
+	bra		_stocell
+_testold:
+	ldaa	cellstatetemp
+	anda	#255
+	beq		_celldead
+	ldaa	#OLDCELLPATTERN1
+	bra		_stocell
+_cellborn:
+	ldaa	#NEWCELLPATTERN1
+_stocell:
+	;ldx		xtempsrc
+	;inx
+	;stx		xtempsrc
+	ldx		xtempdst
+	staa	,x
+
+	incb
+	inc		btemp
+	dec		movecount
+	bne		_dolinelop		
+
+	rts
+
+;----------
+; compscreenline
+;	compress the screen line buffer, and put it into the offscreenbuf
+;	.b has line for dest, 0-95
+
+	.MODULE MDCOMPSCREENLINE
+compscreenline:
+	cmpb	nscanlines
+	bge		_cslout
+
+	ldaa	nvidbytesperrow
+	staa	movecount
+	ldaa	nvidmulshifts
+	staa	rottemp
+
+	clra
+
+_scnmullopc:
+	asld
+	dec		rottemp
+	bne		_scnmullopc
+
+	addd	#offscreen
+	std		dtemp
+	ldx		dtemp				; point to the line we want
+	stx		xtempdst
+
+	ldx		#explinedst
+	inx
+	stx		xtempsrc
+_csllop:
+	ldx		xtempsrc
+	ldaa	,x
+	asla
+	asla
+	inx
+	oraa	,x
+	asla
+	asla
+	inx
+	oraa	,x
+	asla
+	asla
+	inx
+	oraa	,x
+	inx
+	stx		xtempsrc
+
+	ldx		xtempdst
+	staa	,x
+	inx
+	stx		xtempdst
+
+	dec		movecount
+	bne		_csllop	
+_cslout:
+	rts
+
+
+;----------
+; generateone
+;	do a complete generation
+	.MODULE MDGENERATEONE
+
+
+generateone:
+	ldx		#expline0
+	stx		expline0addr
+	ldab	npixelsperrowp2
+	abx
+	stx		expline1addr
+	abx
+	stx		expline2addr
+
+	ldab	#255
+	ldx		expline0addr
+	jsr		expscreenline
+	ldab	#0
+	stab	gonelinedestn
+	ldx		expline1addr
+	jsr		expscreenline
+
+_gonelop:
+	ldab	gonelinedestn
+	incb	; b is now set to screen line to grab from
+	ldx		expline2addr
+	jsr		expscreenline
+	jsr		dolifelineexp	; with the expanded three screen line
+							;	buffers, do life
+	ldab	gonelinedestn	; screen line to store to 0-95
+	jsr		compscreenline	; compress expanded life line to
+							;	 screen buffer line
+
+	; move expanded screen buf lines up
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d	
+	; ldx		expline1addr
+	; stx		xtempsrc
+	; ldx		#expline0
+	; stx		xtempdst
+	; ldd		#260
+	; jsr		copymem
+;	ldaa	npixelsperrowp2  ; #130
+;	staa	movecount
+;
+;	ldx		expline1addr
+;	stx		xtempsrc
+;	ldx		#expline0
+;	stx		xtempdst
+;_movexplineslop:
+;	ldd		,x
+;	ldx		xtempdst
+;	std		,x
+;	inx
+;	inx
+;	stx		xtempdst
+;	ldx		xtempsrc
+;	inx
+;	inx
+;	stx		xtempsrc
+;	dec		movecount
+;	bne		_movexplineslop
+	ldd		expline0addr
+	ldx		expline1addr
+	stx		expline0addr
+	ldx		expline2addr
+	stx		expline1addr
+	std		expline2addr
+
+
+	; look to next screen line
+	ldab	gonelinedestn
+	incb
+	stab	gonelinedestn
+	cmpb	nscanlines
+	bne		_gonelop
+;-
+	; Now we copy from offscreen buffer to screen
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d
+	ldx		#offscreen
+	stx		xtempsrc
+	ldx		#SCREENSTART
+	stx		xtempdst
+	ldd		nvidbytesperscreen
+	jsr		copymem
+	rts
+
+;----------
+; initbss
+;	fill bss with 0
+	.MODULE MDINITBSS
+initbss
+	clra
+	ldx #bss
+_initbsslop
+	staa	,x
+	inx
+	cpx		#bssend
+	bne		_initbsslop
+	rts
+
+
+;----------
+; waitkeyoff
+;	wait til user is not pressing any key
+	.MODULE MDWAITKEYOFF
+waitkeyoff:
+	ldaa #0
+	staa $02
+_waigetoffkeylop:
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_waigetoffkeylop
+	cmpa	#255
+	bne		_waigetoffkeylop
+
+	ldaa	#%01111010	; break ctrl shift
+	staa	$02
+_wbrkshctrl
+	ldaa	$03
+	nop
+	nop
+	cmpa	$03
+	bne		_wbrkshctrl
+	bita	#%00000010
+	beq		_wbrkshctrl
+	rts
+
+;----------
+; waitanykey
+;	wait til user is pressing any key
+	.MODULE MDWAITTHISKEY
+waitanykey:
+	ldaa #0
+	staa $02
+_waipresskeylop:
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_waipresskeylop
+	cmpa	#255
+	beq		_waipresskeylop
+	rts
+
+
+;----------
+; shift
+;	ldaa #%01111111
+;	staa $02
+;	ldaa $03
+;	bita #%00000010
+;	beq pressed
+;
+; shift: #%01111111  #%00000010
+; break: #%11111011  #%00000010
+; ctrl : #%11111110  #%00000010
+;
+; keyboard keys sto to $02 read from $BFFF
+; W #%01111111 #%00000100
+; A #%11111101 #%00000001
+; S #%11110111 #%00000100
+; Z #%11111011 #%00001000
+;
+; Space G L 1 2 C E Q
+; space  #%01111111 #%00001000
+; G #%01111111 #%00000001
+; L #%11101111 #%00000010
+; 1 #%11111101 #%00010000
+; 2 #%11111011 #%00010000
+; C #%11110111 #%00000001
+; E #%11011111 #%00000001
+; Q #%11111101 #%00000100
+
+SHIFTKEY	.EQU %0111111100000010
+BREAKKEY	.EQU %1111101100000010
+SPACEKEY	.EQU %0111111100001000
+GKEY		.EQU %0111111100000001
+LKEY		.EQU %1110111100000010
+WKEY		.EQU %0111111100000100
+AKEY		.EQU %1111110100000001
+SKEY		.EQU %1111011100000100
+ZKEY		.EQU %1111101100001000
+ONEKEY		.EQU %1111110100010000
+TWOKEY		.EQU %1111101100010000
+CKEY		.EQU %1111011100000001
+EKEY		.EQU %1101111100000001
+QKEY		.EQU %1111110100000100
+
+;----------
+; scanspecialkey
+;	d contains specialkey
+;	return with Z set if specialkey pressed
+	.MODULE MDSCANBREAK
+scanspecialkey
+	staa	$02
+	stab	btemp
+_deboncbr
+	nop
+	ldaa	$03
+	nop
+	nop
+	cmpa	$03
+	bne		_deboncbr
+	bita	btemp
+	rts
+
+;----------
+; scankbkey
+;	d contains kbkey
+;	return with Z set if kbkey pressed
+	.MODULE MDSCANBREAK
+scankbkey
+	staa	$02
+	stab	btemp
+_debonckbkey
+	nop
+	ldaa	$BFFF
+	nop
+	nop
+	cmpa	$BFFF
+	bne		_debonckbkey
+	bita	btemp
+	rts
+
+
+;----------
+; calccursorposn
+;	calculate pointer to byte under graphics cursor
+;	return address in .x
+	.MODULE MDCALCCURSORPOSN
+calccursorposn
+	ldaa	nvidmulshifts
+	staa	rottemp
+	clra
+	ldab	grcursory
+_scnmullop:
+	asld
+	dec		rottemp
+	bne		_scnmullop
+	addd	#SCREENSTART
+	std		dtemp
+	ldab	grcursorx
+	lsrb
+	lsrb				; cursorx / 4 = byte offset from start of line
+	ldx		dtemp		; point to the screen line we want
+	abx					; add the byte offset
+	rts
+
+;----------
+; gcursoroff,
+;	restore screen under graphic cursor if we need to
+	.MODULE MDGCURSOROFF
+gcursoroff
+	ldaa	flgrcursoron
+	beq		_out
+	clra
+	staa	flgrcursoron
+	jsr		calccursorposn	; put pointer into .x
+	ldaa	byteatcursor
+	staa	,x
+_out
+	rts
+
+;----------
+; gcursoron,
+;	place the graphic cursor
+	.MODULE MDGCURSORON
+
+CURSORPATTERN4	.EQU %01000000
+CURSORPATTERN3	.EQU %00010000
+CURSORPATTERN2	.EQU %00000100
+CURSORPATTERN1	.EQU %00000001
+
+gcursoron
+	ldaa	flgrcursoron
+	bne		_out		; if the cursor is already on, then rts
+	inca				; ldaa #1
+	staa	flgrcursoron
+	jsr		calccursorposn	; put pointer into .x
+	ldaa	,x
+	staa	byteatcursor
+	ldab	grcursorx
+	andb	#3
+	bne		_ck1
+	; leftmost pixel
+	anda	#%00111111
+	oraa	#CURSORPATTERN4
+	bra		_stoit
+_ck1
+	cmpb	#1
+	bne		_ck2
+	anda	#%11001111
+	oraa	#CURSORPATTERN3
+	bra		_stoit
+_ck2
+	cmpb	#2
+	bne		_ck3
+	anda	#%11110011
+	oraa	#CURSORPATTERN2
+	bra		_stoit
+_ck3
+	anda	#%11111100
+	oraa	#CURSORPATTERN1
+_stoit
+	staa	,x
+_out
+	rts
+
+;----------
+; togglecursor,
+;	toggle the cell under the graphic cursor
+	.MODULE MDTOGGLECURSOR
+togglecursor
+	ldaa	flgrcursoron
+	beq		_goon
+	; cursor is on.  Turn it off.
+	jmp	gcursoroff	
+_goon
+	; cursor is off.  Turn it on.
+	jmp	gcursoron
+
+;----------
+; togglecell,
+;	toggle the cell under the graphic cursor
+	.MODULE MDTOGGLECELL
+togglecell
+	jsr		gcursoroff
+	jsr		gcursoron	; kludge to refresh byteatcursor
+
+	ldaa	byteatcursor
+	ldab	grcursorx
+	andb	#3
+	bne		_ck1
+	; leftmost pixel
+	tab
+	andb	#%00111111
+	anda	#%11000000
+	cmpa	#ZEROPATTERN4
+	beq		_set0
+	orab	#ZEROPATTERN4
+	bra		_stoit
+_set0
+	orab	#NEWCELLPATTERN4
+	bra		_stoit
+
+_ck1
+	cmpb	#1
+	bne		_ck2
+	tab
+	andb	#%11001111
+	anda	#%00110000
+	cmpa	#ZEROPATTERN3
+	beq		_set1
+	orab	#ZEROPATTERN3
+	bra		_stoit
+_set1
+	orab	#NEWCELLPATTERN3
+	bra		_stoit
+
+_ck2
+	cmpb	#2
+	bne		_ck3
+	tab
+	andb	#%11110011
+	anda	#%00001100
+	cmpa	#ZEROPATTERN2
+	beq		_set2
+	orab	#ZEROPATTERN2
+	bra		_stoit
+_set2
+	orab	#NEWCELLPATTERN2
+	bra		_stoit
+
+_ck3
+	tab
+	andb	#%11111100
+	anda	#%00000011
+	cmpa	#ZEROPATTERN1
+	beq		_set3
+	orab	#ZEROPATTERN1
+	bra		_stoit
+_set3
+	orab	#NEWCELLPATTERN1
+_stoit
+	stab	byteatcursor
+	jsr		gcursoroff		; kludge to store byteatcursor
+	jsr		gcursoron
+	rts
+
+;----------
+; loadfile,
+;	load a file
+	.MODULE MDLOADFILE
+loadfile
+	jsr		copyback
+	jsr		unsetgraphics
+ 	jsr		cleartextscreen
+	ldx		#loadingtextpre
+	jsr		prnmess
+
+	jsr		waitkeyoff	; wait for no key
+_waispace
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		_waitnobreaklop	; if he hit break, exit
+
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_waispace	; wait for space
+	jsr		waitkeyoff	; wait for no key
+
+	ldx		#loadingtext
+	jsr		prnmess
+
+
+	ldaa	#1
+	staa	$4274	; (external ref) disable file type checking
+
+	clra					; a=0 means we're looking for a program file 
+	jsr		$FD8F			; read file name block, hope for type in .a (external ref)
+
+	ldx		#ssavestart
+_loadblocklop
+	stx     $4278			; cass buffer address (external ref)
+	jsr     $FDD0			; (external ref)
+	bpl     _loadblocklop
+
+	clra
+	staa	$4274	; (external ref) re-enable file type checking
+
+	; to do - verify that it's a proper save file
+	ldx		#fakefileid
+	stx		xtempsrc
+	ldx		#sfakefileid
+	stx		xtempdst
+	ldd		#FAKEFILEIDSIZE
+	jsr		cmpmem
+	beq		_copyloadgrblock
+
+	; not a save file
+	ldx		#notasavefiletext
+	jsr		prnmess
+	jsr		waitanykey
+	jsr		waitkeyoff	; wait for no key
+	bra		_copycells	; we can't get graphics mode info from
+						;	a file that isn't a save file
+
+	; copy info from loaded file to proper places
+	; copy graphics info
+_copyloadgrblock
+	ldx		#sgrmode
+;	stx		xtempsrc
+;	ldx		#grmode
+;	stx		xtempdst
+;	ldd		#GRMODESIZE
+;	jsr		copymem
+	jsr		setgraphicsres
+
+	; copy screen info to screen
+_copycells
+	jsr		setgraphics
+	; Now we copy from offscreen buffer to screen
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d
+	ldx		#offscreen
+	stx		xtempsrc
+	ldx		#SCREENSTART
+	stx		xtempdst
+	ldd		nvidbytesperscreen
+	jsr		copymem
+
+
+_waitnobreaklop
+	jsr		waitkeyoff	; wait for no key
+	jsr		setgraphics
+	;	visual cue for edit mode
+	jsr		visualeditcue	; visual edit cue, eh
+	rts
+
+
+;----------
+; visualeditcue,
+;	set the palette to Baboon
+visualeditcue
+	ldaa	grmode
+	eora	#64		; color set select bit 6
+	staa	$BFFF	; switch color set select
+	rts
+
+;----------
+; savefile,
+;	save a file
+	.MODULE MDSAVEFILE
+
+
+FILNAMLEN	.EQU $4256
+
+; NAMEFILE BLOCK BUFFER ($425F-$426D)
+FILNAMB	.EQU  $4257
+FILNAMA	.EQU  $425F
+
+FILTYP	.EQU  $4267  ;FILE TYPE
+MLSTRT	.EQU  $426A  ;STARTING ADDRESS OF ML
+MLLOAD	.EQU  $426C  ;LOADING " " "
+; 
+ 
+; * CSAVE ROUTINES (OR SEGMENTS)
+ 
+DODATA	.EQU  $FC5D  ;PART OF 'CSAVE' CODE
+DONFLB	.EQU  $FC8E  ;SAVE NAMEFILE BLK
+DTSTRT	.EQU  $426F  ;START OF DATA
+DTEND	.EQU  $4271  ;END OF DATA -1
+
+lifedata	.byte "LIFEDATA"
+
+; life-ed data file
+fakefile	.byte $43, $5F, $00, $0A, $86, $22,
+fakefileid	; LIFE-ED DATA FILE
+			.byte $4C, $49, $46, $45, $2D, $45, $44
+			.byte $20, $44
+			.byte $41, $54, $41, $20, $46, $49, $4C, $45
+fakefileidend
+			.byte $22, $00, $00, $00, $00
+fakefileend
+
+FAKEFILESIZE .EQU fakefileend-fakefile
+FAKEFILEIDSIZE .EQU fakefileidend-fakefileid
+
+savefile
+
+	; Now we copy from screen to offscreen buffer
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d
+	ldx		#SCREENSTART
+	stx		xtempsrc
+	ldx		#offscreen
+	stx		xtempdst
+	ldd		nvidbytesperscreen
+	jsr		copymem
+
+	; copy graphics resolution data to save area
+	ldx		#grmode
+	stx		xtempsrc
+	ldx		#sgrmode
+	stx		xtempdst
+	ldd		#GRMODESIZE
+	jsr		copymem
+
+	jsr		copyback
+	jsr		unsetgraphics
+ 	jsr		cleartextscreen
+	ldx		#savingtextpre
+	jsr		prnmess
+
+	jsr		waitkeyoff	; wait for no key
+_waispace
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		_waitnobreaklop	; if he hit break, exit
+
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_waispace	; wait for space
+	jsr		waitkeyoff	; wait for no key
+
+	ldx		#savingtext
+	jsr		prnmess
+
+
+	; copy fake file to save area
+	ldx		#fakefile
+	stx		xtempsrc
+	ldx		#sfakefile
+	stx		xtempdst
+	ldd		#FAKEFILESIZE
+	jsr		copymem
+
+	; copy filename to filename area
+	ldaa	#8
+	staa	FILNAMLEN
+	ldx		#lifedata
+	stx		xtempsrc
+	ldx		#FILNAMB
+	stx		xtempdst
+	ldd		#8
+	jsr		copymem
+
+	clra			; file type 0 = BASIC program
+;	ldaa	#01
+	staa	FILTYP
+
+	ldx		#00
+	stx		MLSTRT
+	stx		MLLOAD
+
+	ldx		#ssavestart
+	stx		DTSTRT
+	; calculate the end of save, which will be different for
+	;	the different graphics modes supported
+	ldd		nvidbytesperscreen
+	addd	#offscreen
+	std		DTEND
+
+	ldd		DTEND
+	subd	DTSTRT
+	std		MLLOAD
+
+	jsr		DONFLB
+	jsr		DODATA
+
+_waitnobreaklop
+	jsr		waitkeyoff	; wait for no key
+
+	; Now we copy from offscreen buffer to screen
+	;	because we nuked the hires screen when viewing text
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d
+	ldx		#offscreen
+	stx		xtempsrc
+	ldx		#SCREENSTART
+	stx		xtempdst
+	ldd		nvidbytesperscreen
+	jsr		copymem
+	jsr		setgraphics
+	jsr		visualeditcue
+	rts
+
+;----------
+; setgraphicsres
+;	Copy the  graphic mode info, and set the graphics mode
+;	.x points to the graphic mode table to use
+	.MODULE MDSETGRAPHICSRES
+setgraphicsres
+	;	copymem - source in xtempsrc, dst in xtempdst, count in d
+	; ldx		#lgrmode
+	stx		xtempsrc
+	ldx		#grmode
+	stx		xtempdst
+	ldd		#GRMODESIZE
+	jsr		copymem
+
+	; life - init our line buffers
+	ldx		#expline0
+	stx		expline0addr
+	ldab	npixelsperrowp2
+	abx
+	stx		expline1addr
+	abx
+	stx		expline2addr
+
+	; expline0:	.FILL 390,0		; 3 * (npixelsperrow + 2)
+	ldx		#0
+	ldab	npixelsperrow
+	incb
+	incb
+	abx
+	abx
+	abx
+	;	fillmem - movecount has count, .a has byte, .x has dest
+	stx		movecount
+	clra
+	ldx		#expline0
+	jsr		fillmem
+
+	; and set the graphics cursor to 0,0
+	clra
+	staa	grcursorx
+	staa	grcursory
+
+	jsr		setgraphics
+	rts
+
+;----------
+; editmode, 
+;	return with Z if break
+;	return with no Z if going to Generate mode
+
+	.MODULE MDEDITMODE
+editmode:
+	; first, let him know something wonderful has happened
+	;	visual cue for edit mode
+	jsr		visualeditcue
+
+	; do some initializations
+	clra
+	staa	flgrcursoron
+	jsr		togglecursor
+
+	; wait for him to get off the key
+	jsr		waitkeyoff
+
+	; main edit loop
+_editlop
+	jsr		togglecursor
+
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	bne		_ckshift	
+	; break hit.  Exit.
+	jsr		waitkeyoff
+	jmp		_leaveeditz
+
+_ckshift
+	ldd		#SHIFTKEY
+	jsr		scanspecialkey	; returns with Z set if shift pressed
+	bne		_scannoshift
+
+	; shift pressed.
+	jsr		gcursoroff
+
+_ckshg		; check for G key pressed (while shifted)
+	ldd		#GKEY
+	jsr		scankbkey
+	bne		_cksh1
+	; G pressed. Go back to main (to generations mode)
+	ldaa	#255
+	jmp		_leaveedit
+
+_cksh1		; check for 1 key pressed (while shifted)
+	ldd		#ONEKEY
+	jsr		scankbkey
+	bne		_cksh2
+	; 1 pressed. Set lores mode
+	ldx		#lgrmode
+	jsr		setgraphicsres
+	jsr		visualeditcue	; visual edit cue, eh
+	bra		_keepgoingwnkjp
+	;-
+_cksh2		; check for 2 key pressed (while shifted)
+	ldd		#TWOKEY
+	jsr		scankbkey
+	bne		_ckshc
+	; 2 pressed. Set hires mode
+	ldx		#hgrmode
+	jsr		setgraphicsres
+	jsr		visualeditcue	; visual edit cue, eh
+	bra		_keepgoingwnkjp
+	;-
+_ckshc		; check for C key pressed (while shifted)
+	ldd		#CKEY
+	jsr		scankbkey
+	bne		_ckshl
+	; C pressed. Clear graphics screen
+	jsr		cleargrscreen
+	bra		_keepgoingwnkjp
+	;-
+_ckshl		; check for L key pressed (while shifted)
+	ldd		#LKEY
+	jsr		scankbkey
+	bne		_ckshs
+	; L pressed. Load file.
+	jsr		loadfile
+	bra		_keepgoingwnkjp
+	;-
+_ckshs		; check for S key pressed (while shifted)
+	ldd		#SKEY
+	jsr		scankbkey
+	bne		_keepgoingjp
+	; S pressed. save file
+	jsr		savefile
+_keepgoingwnkjp
+	jmp		_keepgoingwnk
+_keepgoingjp
+	jmp		_keepgoing
+	;-
+	;-
+	;-
+_scannoshift
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_ckw
+	; Space pressed. Toggle cell under cursor
+	jsr		gcursoroff
+	jsr		togglecell
+	bra		_keepgoingwnk
+_ckw
+	ldd		#WKEY
+	jsr		scankbkey
+	bne		_cka
+	; W pressed. cursor up.
+	jsr		gcursoroff
+	ldaa	grcursory
+	deca
+	cmpa	#255
+	bne		_ckwmovcurs
+	clra
+_ckwmovcurs
+	staa	grcursory
+	jsr		gcursoron
+	bra		_keepgoingwnk
+	;-
+_cka
+	ldd		#AKEY
+	jsr		scankbkey
+	bne		_cks
+	; A pressed. cursor left.
+	jsr		gcursoroff
+	ldaa	grcursorx
+	deca
+	cmpa	#255
+	bne		_ckamovcurs
+	clra
+_ckamovcurs
+	staa	grcursorx
+	jsr		gcursoron
+	bra		_keepgoingwnk
+	;-
+_cks
+	ldd		#SKEY
+	jsr		scankbkey
+	bne		_ckz
+	; S pressed. cursor right.
+	jsr		gcursoroff
+	ldaa	grcursorx
+	inca
+	cmpa	npixelsperrow
+	blo		_cksmovcurs
+	ldaa	npixelsperrow
+	deca
+_cksmovcurs
+	staa	grcursorx
+	jsr		gcursoron
+	bra		_keepgoingwnk
+	;-
+_ckz
+	ldd		#ZKEY
+	jsr		scankbkey
+	bne		_ckmore
+	; Z pressed. cursor down.
+	jsr		gcursoroff
+	ldaa	grcursory
+	inca
+	cmpa	nscanlines
+	blo		_ckzmovcurs
+	ldaa	nscanlines
+	deca
+_ckzmovcurs
+	staa	grcursory
+	jsr		gcursoron
+	bra		_keepgoingwnk
+;-
+_ckmore
+	bra		_keepgoing
+;-
+_keepgoingwnk
+	jsr		waitkeyoff
+_keepgoing
+	jmp		_editlop
+	; end main edit loop
+
+_leaveeditz
+	anda	#0
+	; leaving, Z if break, notZ if generate
+_leaveedit
+	tpa
+	ldab	grmode
+	stab	$BFFF	; switch color set select
+	tap
+	rts
+;----------
+; progmain, main program entry point
+	.MODULE MDPROGMAIN
+progmain:
+	jsr		initbss
+	jsr		copyup
+	jsr		waitkeyoff
+
+	jsr		unsetgraphics
+	jsr		cleartextscreen
+	ldx		#introtext
+	jsr		prnmess
+_waispace
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		_waitnobreaklop	; if he hit break, exit
+
+	ldd		#SPACEKEY
+	jsr		scankbkey
+	bne		_waispace	; wait for space
+	jsr		waitkeyoff	; wait for no key
+
+	; get ready for life
+	jsr		makepixelxlattbl	; set up colors
+
+	; Copy the default lores graphic mode info
+	ldx		#lgrmode
+	jsr		setgraphicsres
+
+	jsr cleargrscreen
+
+	; test
+;	ldaa		#%11111100
+;	staa		$4310
+;
+;	ldaa	#%11111111
+;	staa	$4810
+;	staa	$4811
+;	ldaa	#%11110000
+;	staa	$4812
+
+	ldaa	#%11111100
+	staa	$4032
+	ldaa	#%11111111
+	staa	$4207
+	staa	$4208
+	ldaa	#%11110000
+	staa	$4209
+
+	; end test
+
+	; end get ready for life
+
+
+_maingeneratelop:
+	jsr	generateone
+
+	ldd		#BREAKKEY
+	jsr		scanspecialkey	; returns with Z set if break pressed
+	beq		_waitnobreaklop	; break hit.  Exit.
+
+	ldd		#SHIFTKEY
+	jsr		scanspecialkey	; returns with Z set if shift pressed
+	bne		_keepgoing
+	; shift pressed.
+	ldd		#EKEY
+	jsr		scankbkey
+	bne		_keepgoing
+	; E pressed. Go to Edit mode.
+	jsr		editmode		;  returns with Z set if break pressed
+							;		(Z clear if going to Generate)
+	beq		_waitnobreaklop	; break hit.  Exit.
+
+_keepgoing
+	bra		_maingeneratelop
+
+_waitnobreaklop
+	; he hit break
+	ldd		#BREAKKEY
+	jsr		scanspecialkey
+	beq		_waitnobreaklop	; wait for him to get off break key
+
+	ldaa	#255
+	staa	$02
+
+	jsr  unsetgraphics
+	jsr		copyback
+
+	rts
+
+;----------
+; bss
+;	bss is initialized to all 0s at the start of the program.
+;	therefore, to save load time, there's no need to save this
+;	area of memory along with the program.
+;	This has to go at the very end of things, of course.
+	.MODULE MDBSS
+bss:
+			.byte "BSSSTART"
+			.WORD 0
+
+; xtempsrc:	.WORD  0
+; xtempdst:	.WORD  0
+; dtemp:		.WORD  0
+; movecount:	.WORD  0
+
+xtempsrcnz:		.WORD  0
+xtempdstnz:		.WORD  0
+movecountnz:	.WORD  0
+
+
+; rottemp		.byte  0
+; btemp		.byte 0
+; cellstatetemp	.BYTE 0
+; gonelinedestn	.byte 0
+
+txtcursorx	.byte 0
+txtcursory	.byte 0
+grcursorx	.byte 0
+grcursory	.byte 0
+flgrcursoron	.byte 0
+byteatcursor	.byte 0
+
+; keep these three expline together
+expline0:	.FILL 390,0		; 3 * (npixelsperrow + 2)
+; expline1:	.FILL 130,0
+; expline2:	.FILL 130,0
+
+expline0addr	.WORD 0
+expline1addr	.WORD 0
+expline2addr	.WORD 0
+
+explinedst:	.FILL 130,0
+
+pixelxlattbl:	.FILL 256,0
+
+grmode		.byte 32 ; 32	; 64x64 multicolor
+nscanlines	.byte 64
+nvidbytesperrow	.byte 16
+npixelsperrow	.byte 64
+npixelsperrowp2	.byte 66	; npixelsperrow + 2
+nvidmulshifts	.byte 4		; number of shifts to multiply by nvidbytesperrow
+nvidbytesperscreen	.WORD	1024	; number of bytes in screen
+nbitpatterns	.byte 0		; not used
+padd	.WORD 0
+
+; storestuff, enough space to store128+1024 bytes
+storestuff:	.FILL 1152,0	; 1024+128
+
+; ==== keep this stuff together -- it's our load/save image ====
+ssavestart
+sfakefile	.byte $43, $5F, $00, $0A, $86, $22,
+sfakefileid	; LIFE-ED DATA FILE
+			.byte $4C, $49, $46, $45, $2D, $45, $44
+			.byte $20, $44
+			.byte $41, $54, $41, $20, $46, $49, $4C, $45
+sfakefileidend
+			.byte $22, $00, $00, $00, $00
+sfakefileend
+
+sgrmode		.byte 32 ; 32	; 64x64 multicolor
+snscanlines	.byte 64
+snvidbytesperrow	.byte 16
+snpixelsperrow	.byte 64
+snpixelsperrowp2	.byte 66	; npixelsperrow + 2
+snvidmulshifts	.byte 4		; number of shifts to multiply by nvidbytesperrow
+snbitpatterns	.byte 0		; not used
+snvidbytesperscreen	.WORD	1024	; number of bytes in screen
+offscreen:	.FILL 3072,0
+offscreenend:	.byte 0
+ssaveend		.byte 0
+
+bssend	.WORD 0
+
+	.end
