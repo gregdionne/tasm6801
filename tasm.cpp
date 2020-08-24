@@ -296,19 +296,7 @@ void Tasm::doCString(void) {
 }
 
 void Tasm::doByte(void) {
-   fetcher.matchWhitespace();
-   do {
-     if (fetcher.skipChar('"'))
-       while (!fetcher.skipChar('"') && !fetcher.iseol())
-          writeByte(fetcher.getChar());
-//     else if (fetcher.skipChar('\'')) {
-//          writeByte(fetcher.getQuotedLiteral());
-//          fetcher.matchChar('\'');
-     else
-        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
-     fetcher.skipWhitespace();
-   } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
-   fetcher.matcheol();
+   doText();
 }
 
 void Tasm::doWord(void) {
