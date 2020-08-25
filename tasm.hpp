@@ -13,17 +13,19 @@
 
 class Tasm {
 public:
-  Tasm(int argc, char *argv[]) : fetcher(argc, argv), log(argc,argv) {
+  Tasm(int argc, char *argv[]) : fetcher(argc, argv), log(argc,argv), argv_(argv), argc_(argc) {
      nbytes = 0; 
      pc = 0; 
      execstart = 0;
      endReached = false;
      *labelname = *modulename = '\0';
+     processOpts();
   }
   
   int execute(void);
 
 private:
+  void processOpts(void);
   void validateObj(void);
   void writeWord(int w);
   void writeByte(int b);
@@ -68,9 +70,11 @@ private:
   void failReference(int refloc);
 
   Fetcher fetcher;
+  Log log;
+  char **argv_;
+  int argc_;
   CRTable xref;
   Macro macro;
-  Log log;
   Archive archiver;
   unsigned char binary[65536];
   char modulename[MAXLABELLEN];
@@ -80,6 +84,8 @@ private:
   int startpc;
   int execstart;
   int endReached;
+  int wUnused;
+  int argcnt;
 };
 
 #endif

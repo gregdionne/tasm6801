@@ -15,12 +15,13 @@ class Log {
        argc_(argc), argv_(argv) {}
 
   void init(void);
-  void initline(std::size_t n, int pc);
+  void initline(std::size_t n, int pc, int remaining);
   void finish(std::string line);
   void writeObj(unsigned char *binary, size_t nbytes);
   void writeC10(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
   void writeLst(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
 private:
+  void processOpts(void);
   void writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here);
   void writeRemaining(std::size_t n, int& remaining, unsigned char binary[], int& byte, int& here);
   void putchar(unsigned char c);
@@ -34,5 +35,8 @@ private:
   FILE *fobj;
   FILE *fc10;
   int chksum;
+  int isListCompact;
+  int wUnused;
+  int argcnt;
 };
 #endif

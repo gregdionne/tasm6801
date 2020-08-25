@@ -28,6 +28,19 @@ static const char *macros[]={"#define",0};
 static const char *directives[]={".msfirst",".org",".execstart",".end",".equ",".module",".text",".strs",".strz",".byte",".word",".fill",".block",0};
 static const char *pseudo_ops[]={".msfirst","org",".execstart","end","equ",".module","fcc","fcs","fcn","fcb","fdb","rzb","rmb",0};
 
+void Tasm::processOpts(void)
+{
+   argcnt = 1;
+   wUnused = false;
+   while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--")) {
+      wUnused |= !strcmp(argv_[argcnt],"-Wunused");
+      argcnt++;
+   }
+
+   if (argcnt < argc_ && !strcmp(argv_[argcnt],"--"))
+      argcnt++;
+}
+
 void Tasm::validateObj()
 {
    if (!nbytes) {
@@ -262,13 +275,13 @@ void Tasm::doText(void) {
    do {
      fetcher.skipWhitespace();
      char delim = fetcher.peekChar();
-     if (delim == '\'' || delim == '"') {
+     if (fetcher.isQuotedChar() || (delim != '\'' && delim != '"')) {
+        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
+     } else {
         fetcher.matchChar(delim);
         while (!fetcher.isChar(delim) && !fetcher.iseol())
-           writeByte(static_cast<unsigned char>(fetcher.getQuotedLiteral()));
+           writeByte(static_cast<unsigned char>(fetcher.getEscapedChar()));
         fetcher.matchChar(delim);
-     } else {
-        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
      }
      fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
@@ -281,7 +294,7 @@ void Tasm::doNString(void) {
    if (!fetcher.skipChar('\''))
       fetcher.matchChar('"');
    while (!fetcher.isChar(delim) && !fetcher.iseol()) {
-      unsigned char c = static_cast<unsigned char>(fetcher.getQuotedLiteral());
+      unsigned char c = static_cast<unsigned char>(fetcher.getEscapedChar());
       if (fetcher.isChar(delim))
          c |= 128;
       writeByte(c);
@@ -378,7 +391,7 @@ void Tasm::doDirective(void) {
 }
 
 void Tasm::doEqu(void) {
-   Label l(modulename, labelname);
+   Label l(modulename, labelname, fetcher.currentFilename(), fetcher.linenum);
    l.expression.parse(fetcher, modulename, pc);
    xref.addlabel(l);
 }
@@ -387,14 +400,14 @@ void Tasm::doLabel(void) {
    getLabelName();
 
    if (fetcher.isBlankLine()) {
-      xref.addlabel(modulename,labelname,pc);
+      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       return;
    }
 
    if (!fetcher.skipChar(':'))
       fetcher.matchWhitespace();
    else if (fetcher.isBlankLine()) {
-      xref.addlabel(modulename,labelname,pc);
+      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       return;
    } 
 
@@ -407,17 +420,17 @@ void Tasm::doLabel(void) {
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".module")) {
          doModule();
-         xref.addlabel(modulename,labelname,pc);
+         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".org")) {
          doOrg();
-         xref.addlabel(modulename,labelname,pc);
+         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          fetcher.matcheol();
       } else {
-         xref.addlabel(modulename,labelname,pc);
+         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          doDirective();
    } else {
-      xref.addlabel(modulename,labelname,pc);
+      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       doAssembly();
    }
 }
@@ -474,6 +487,9 @@ void Tasm::resolveReferences(void) {
   int failpc;
   if (!xref.resolveReferences(startpc, binary, failpc))
      failReference(failpc);
+
+  if (wUnused)
+     xref.reportUnusedReferences();
 }
 
 

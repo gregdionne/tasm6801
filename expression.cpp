@@ -61,7 +61,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       return;
 
    if (fetcher.skipChar('\'')) {
-      value = fetcher.getQuotedLiteral();
+      value = fetcher.getEscapedChar();
 
       // allow auto-termination of character constant
       // if followed by whitespace
@@ -160,6 +160,7 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     else
        for (std::size_t i=0; i<labels.size(); ++i)
           if (labels[i].name == name) {
+             labels[i].used = true;
              if (labels[i].isdirty) 
                 fprintf(stderr,"Circular reference found.  Label \"%s\"\n",labels[i].name.c_str());
              else {
@@ -195,10 +196,13 @@ bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int
    }
 }
 
-Label::Label(const char *modulename, const char *labelname)
+Label::Label(const char *modulename, const char *labelname, char *filename, int linenum)
 {
    name = labelname[0] == '_' ? std::string(modulename) + std::string(labelname) :
                                 labelname;
    isdirty = false;
+   used = false;
+   fileName = filename;
+   lineNumber = linenum;
 }
 

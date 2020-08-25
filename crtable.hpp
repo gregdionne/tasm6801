@@ -18,7 +18,7 @@ public:
 class CRTable {
 public:
   CRTable(void) {}
-  bool addlabel(const char *modulename, const char *labelname, int location);
+  bool addlabel(const char *modulename, const char *labelname, int location, char *filename, int linenum);
   bool addlabel(Label l);
   void addreference(Reference r);
   std::vector<Reference> references;
@@ -27,6 +27,7 @@ public:
   int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc);
   int tentativelyResolve(Reference& r);
   bool resolveReferences(int startpc, unsigned char *binary, int& failpc);
+  void reportUnusedReferences(void);
 
 private:
   std::vector<Label> labels;

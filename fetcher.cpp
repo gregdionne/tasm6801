@@ -1,6 +1,8 @@
 // Copyright (C) 2019 Greg Dionne
 // Distributed under MIT License
 #include "fetcher.hpp"
+#include "usage.hpp"
+
 #include <stdio.h>  //f...
 #include <stdlib.h> //perror
 #include <string.h> //strlen
@@ -9,18 +11,26 @@
 
 void Fetcher::init(void)
 {
-   if (argc_>1)
-      openNext();
-   else {
-      fprintf(stderr,"usage: %s file1 [file2 [file3 ...]]\n",argv_[0]);
-      exit(1);
+   processOpts();
+   if (!openNext()) {
+      usage(argv_);
    }
+}
+
+void Fetcher::processOpts(void)
+{
+   argcnt = 1;
+   while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--"))
+      argcnt++;
+
+   if (argcnt<argc_ && !strcmp(argv_[argcnt],"--"))
+      argcnt++;
 }
 
 void Fetcher::spitLine(void)
 {
-  if (linenum && filecnt && filecnt<argc_) 
-    fprintf(stderr,"%s(%i): %s",argv_[filecnt],linenum,buf);
+  if (linenum && argcnt && argcnt<argc_) 
+    fprintf(stderr,"%s(%i): %s",argv_[argcnt],linenum,buf);
 }
 
 void Fetcher::die(const char *formatstr, ...)
@@ -28,8 +38,8 @@ void Fetcher::die(const char *formatstr, ...)
    va_list vl;
    va_start(vl, formatstr);
 
-   if (linenum && filecnt && filecnt<argc_) {
-     int len = fprintf(stderr,"%s(%i): ",argv_[filecnt],linenum);
+   if (linenum && argcnt && argcnt<argc_) {
+     int len = fprintf(stderr,"%s(%i): ",argv_[argcnt],linenum);
      fprintf(stderr,"%s",buf);
      for (int i=0; i<len+colnum; i++)
        fprintf(stderr," ");
@@ -42,17 +52,24 @@ void Fetcher::die(const char *formatstr, ...)
   
 bool Fetcher::openNext(void)
 {
-  if (++filecnt<argc_) {
-    fp = fopen(argv_[filecnt],"r");
+  if (argcnt<argc_) {
+    fp = fopen(argv_[argcnt],"r");
     if (!fp) {
-      perror(argv_[filecnt]);
+      fprintf(stderr,"%s: ",argv_[0]);
+      perror(argv_[argcnt]);
       exit(1);
     }
+    argcnt++;
     return true;
   } else { 
-    filecnt = 0;
+    argcnt = 0;
     return false;
   }
+}
+
+char *Fetcher::currentFilename(void)
+{
+    return argv_[argcnt-1];
 }
 
 char *Fetcher::getLine(void)
@@ -421,7 +438,25 @@ bool Fetcher::recognizePostfixedWord(int &value)
        || recognizePostfixedWord(isdigit,   digit, 10, 0xffff, 'd', false, value);
 }
 
-int Fetcher::getQuotedLiteral(void)
+bool Fetcher::isQuotedChar(void)
+{
+   bool ischar = false;
+   int savecol = colnum;
+
+   if (skipChar('\'')) {
+      if (skipChar('\\')) {
+         getEscapedChar();
+      } else if (!isBlankLine()) {
+         getChar();
+      }
+      ischar = skipChar('\'') || isBlankLine();
+   }
+
+   colnum = savecol;
+   return ischar;
+}
+
+int Fetcher::getEscapedChar(void)
 {
    if (skipChar('\\')) {
       int c = getChar();

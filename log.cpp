@@ -4,10 +4,10 @@
 #include <vector>
 #include <string>
 #include "log.hpp"
-#include <string.h>
 
 void Log::init() {
-  std::string filename = argv_[1];
+  processOpts();
+  std::string filename = argv_[argcnt];
   std::string head = filename.substr(0, filename.rfind("."));
   filename = head + ".lst";
   if (!(flist=fopen(filename.c_str(),"w"))) {
@@ -26,13 +26,31 @@ void Log::init() {
   }
 }
 
+void Log::processOpts(void)
+{
+   argcnt = 1;
+   isListCompact = false;
+   while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--")) {
+      isListCompact |= !strcmp(argv_[argcnt],"-list-compact");
+      wUnused |= !strcmp(argv_[argcnt],"-Wunused");
+      argcnt++;
+   }
+
+   if (argcnt < argc_ && !strcmp(argv_[argcnt],"--"))
+      argcnt++;
+}
 
 static char output[1024];
 static char scratch[1024];
 
-void Log::initline(std::size_t n, int pc)
+void Log::initline(std::size_t n, int pc, int remaining)
 {
-   sprintf(output,"%04lu   %04X ",n,pc);
+   if (isListCompact && remaining)
+      sprintf(output," %04X | ",pc);
+   else if (isListCompact)
+      sprintf(output,"      | ");
+   else
+      sprintf(output,"%04lu   %04X ",n,pc);
 }
 
 void Log::finish(std::string line)
@@ -59,8 +77,11 @@ void Log::writeFmt(int count, const char *fmt, std::string line, int& remaining,
 void Log::writeRemaining(std::size_t n, int& remaining, unsigned char binary[], int& byte, int& here)
 {
    while (remaining) {
-      initline(n+1,here);
-      writeFmt(8, "%02X", "\n", remaining, binary, byte, here);
+      initline(n+1,here,remaining);
+      if (isListCompact)
+         writeFmt(5, "%02X ", "\n", remaining, binary, byte, here);
+      else
+         writeFmt(8, "%02X", "\n", remaining, binary, byte, here);
    }
 }
 
@@ -78,15 +99,8 @@ void Log::writeLst(std::vector<std::string>& lines,
       endpc = startpc+binsize;
 
    for (std::size_t n=0; n<pc.size(); ++n) {
-      initline(n+1,pc[n]);
-
-      if (pc[n]==0) {
-         finish(lines[n]);
-         continue;
-      }
 
       if (n<pc.size()-1) {
-
          int there = pc[n+1];
          if (there > endpc) 
             there = endpc;
@@ -95,13 +109,17 @@ void Log::writeLst(std::vector<std::string>& lines,
          if (remaining<0)
             remaining = 0;
 
+         initline(n+1, pc[n], remaining);
+
 	 if (remaining>0 && pc[n] != here) {
             finish(lines[n]);
             writeRemaining(n,remaining,binary,byte,here);
-            continue;
-         }
-
-         if (remaining <= 4) {
+         } else if (isListCompact && remaining <= 5) {
+            writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+         } else if (isListCompact) {
+            writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+            writeRemaining(n,remaining,binary,byte,here);
+         } else if (remaining <= 4) {
             writeFmt(4,"%02X ", lines[n], remaining, binary, byte, here);
 	 } else {
             // 6 preserves tab spacing at the expense of eight-byte block alignment
@@ -109,6 +127,7 @@ void Log::writeLst(std::vector<std::string>& lines,
             writeRemaining(n,remaining,binary,byte,here);
          }
       } else {
+         initline(n+1, pc[n], 0);
          finish(lines[n]);
       }
    }

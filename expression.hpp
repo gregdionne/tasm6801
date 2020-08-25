@@ -76,10 +76,13 @@ private:
 
 class Label {
 public:
-  Label(const char *modulename, const char *labelname);
+  Label(const char *modulename, const char *labelname, char *filename, int linenum);
   std::string name;
   Expression expression;
   int result;
   bool isdirty;
+  bool used;
+  char *fileName;
+  int lineNumber;
 };
 #endif

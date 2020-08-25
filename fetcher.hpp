@@ -10,14 +10,15 @@ class Fetcher {
   char token[BUFSIZ];
   int argc_;
   char **argv_;
-  int filecnt;
+  int argcnt;
   int linenum;
   int colnum;
   int keyID;
   Fetcher(int argc, char *argv[]) :
-      argc_(argc), argv_(argv), filecnt(0), linenum(0), colnum(0) 
+      argc_(argc), argv_(argv), linenum(0), colnum(0) 
   {init();}
 
+  char *currentFilename(void);
   char *getLine(void);
   void spitLine(void);
   void die(const char *formatstr, ...);
@@ -51,6 +52,7 @@ class Fetcher {
   bool isQuaternaryWord(void);
   bool isDecimalWord(void);
   bool isHexadecimalWord(void);
+  bool isQuotedChar(void);
   int getBinaryByte(void);
   int getBinaryWord(void);
   int getQuaternaryByte(void);
@@ -60,11 +62,12 @@ class Fetcher {
   int getHexadecimalWord(void);
   int getDecimalByte(void);
   int getDecimalWord(void);
-  int getQuotedLiteral(void);
+  int getEscapedChar(void);
 
   bool recognizePostfixedWord(int &value);
 private:
   FILE *fp;
+  void processOpts(void);
   bool openNext(void);
   void init(void);
   void expandTabs(char *b, int m, int n);

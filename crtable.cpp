@@ -2,9 +2,9 @@
 // Distributed under MIT License
 #include "crtable.hpp"
 
-bool CRTable::addlabel(const char *modulename, const char *labelname, int location)
+bool CRTable::addlabel(const char *modulename, const char *labelname, int location, char *filename, int linenum)
 {
-  Label lbl(modulename, labelname); 
+  Label lbl(modulename, labelname, filename, linenum); 
   lbl.expression = Expression(location);
   return addlabel(lbl);
 }
@@ -19,6 +19,14 @@ bool CRTable::addlabel(Label lbl)
   
   labels.push_back(lbl);
   return true;
+}
+
+void CRTable::reportUnusedReferences(void)
+{
+   for (std::size_t i=0; i<labels.size(); ++i)
+      if (!labels[i].used)
+         fprintf(stderr,"%s:%i: warning: unused label \'%s\' [-Wunused]\n",
+                 labels[i].fileName,labels[i].lineNumber,labels[i].name.c_str());
 }
 
 void CRTable::addreference(Reference r)
