@@ -19,8 +19,6 @@ dtemp	.equ $00BE
 movecount	.equ $00C9
 rottemp	.equ $00CB
 btemp	.equ $00CC
-cellstatetemp	.equ $00CD
-gonelinedestn	.equ $00CE
 
 	jmp	progmain
 	nop
@@ -110,7 +108,7 @@ notasavefiletext
 copymem:
 	std	movecount
 
-copymemlop:
+_copymemlop:
 	ldx	xtempsrc
 	ldaa	,x
 	inx
@@ -122,7 +120,7 @@ copymemlop:
 	ldx	movecount
 	dex
 	stx	movecount
-	bne	copymemlop
+	bne	_copymemlop
 	rts
 
 
@@ -159,7 +157,7 @@ _copymemnzlop:
 cmpmem:
 	std	movecount
 
-cmpmemlop:
+_cmpmemlop:
 	ldx	xtempsrc
 	ldaa	,x
 	inx
@@ -167,18 +165,18 @@ cmpmemlop:
 
 	ldx	xtempdst
 	cmpa	,x
-	bne	cmpmemout	; memory blocks are unequal - return
+	bne	_cmpmemout	; memory blocks are unequal - return
 	inx
 	stx	xtempdst
 
 	ldx	movecount
 	dex
 	stx	movecount
-	bne	copymemlop
+	bne	_cmpmemlop
 	; Z flag is set, here, if we've gone through all the
 	;	memory we wanted to compare
 
-cmpmemout:
+_cmpmemout:
 	rts
 
 
@@ -536,7 +534,7 @@ _vpsh:	pshb
 _vof3:	cpx	#$7800	;(top of buffer)
 	bhs	_vertlop
 
-_bof2:	lds	svstack
+	lds	svstack
 	rts
 	
 
@@ -683,7 +681,7 @@ _write0
 	cpx	#$6200
 	bhs	_uandd
 	lds	svstack
-_rts
+
 	rts
 
 		
@@ -791,7 +789,6 @@ TWOKEY	.equ %1111101100010000
 CKEY	.equ %1111011100000001
 EKEY	.equ %1101111100000001
 FKEY	.equ %1011111100000001
-QKEY	.equ %1111110100000100
 
 ;----------
 ; scanspecialkey
@@ -1102,8 +1099,8 @@ visualeditcue
 FILNAMLEN	.equ $4256
 
 ; NAMEFILE BLOCK BUFFER ($425F-$426D)
-FILNAMB	.equ $4257
-FILNAMA	.equ $425F
+FILNAMB	.equ $4257  ;CASSETTE SEARCH FILENAME
+FILNAMA	.equ $425F  ;CASSETTE BLOCK FILENAME
 
 FILTYP	.equ $4267  ;FILE TYPE
 MLSTRT	.equ $426A  ;STARTING ADDRESS OF ML
@@ -1312,7 +1309,7 @@ _ckshift
 	; shift pressed.
 	jsr	gcursoroff
 
-_ckshg	; check for G key pressed (while shifted)
+	; check for G key pressed (while shifted)
 	ldd	#GKEY
 	jsr	scankbkey
 	bne	_cksh1
@@ -1654,7 +1651,6 @@ blit:
 	bhi	blit
 	
 	lds	svstack
-_rts
 	rts
 ;----------
 ; bss
