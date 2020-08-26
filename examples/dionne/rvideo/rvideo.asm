@@ -29,7 +29,7 @@ msft	.equ	$fbe7	; write MICROSOFT to screen
 .org	$8e00
 
 .module install
-_start	pulx
+	pulx
 	stx	fretop
 	lds	topram
 	ins

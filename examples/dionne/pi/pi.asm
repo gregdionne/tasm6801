@@ -181,7 +181,7 @@ _again	ldd	coeff_r
 	jsr	addtrm
 	jsr	tsttrm
 	bne	_again
-divrts	rts
+	rts
 
 
 .MODULE NewTrm
