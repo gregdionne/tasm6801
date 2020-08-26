@@ -39,9 +39,9 @@ bool CRTable::resolve(Reference& r, int& result, std::string& offender)
    return r.expression.evaluate(labels, offender, result);
 }
 
-int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir)
+int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir, char *filename, int linenum)
 {
-   Reference r(pc, reftype);
+   Reference r(pc, reftype, filename, linenum);
    r.expression.parse(fetcher, modulename, pc);
 
    int result;
@@ -53,9 +53,9 @@ int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modul
    return result;
 }
 
-int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc) 
+int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum) 
 {
-   Reference r(pc, reftype);
+   Reference r(pc, reftype, filename, linenum);
    r.expression.parse(fetcher, modulename, pc);
 
    int w = tentativelyResolve(r);
@@ -87,6 +87,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
       std::string offender;
 
       if (!resolve(r, result, offender)) {
+         fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
          fprintf(stderr,"label \"%s\" is unresolved at %04x\n",offender.c_str(),r.location);
          failpc = r.location;
          return false;
@@ -94,6 +95,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
 
       if (r.reftype == 2) {
         if (result < -32768 || result > 65535) {
+           fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,"two-byte operand %i for instruction at %04x is out of range [-32768,65535].\n",result,r.location);
            failpc = r.location;
            return false;
@@ -103,6 +105,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
 
       } else if (r.reftype == 1) {
         if (result < -128 || result > 255) {
+           fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,"single-byte operand %i for instruction at %04x is out of range [-128,255].\n",result,r.location);
            failpc = r.location;
            return false;
@@ -112,6 +115,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
       } else if (r.reftype == 0) {
         result -= r.location + 2;
         if (result < -128 || result > 127) {
+           fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,"branch destination %4x at %04x out of range\n",result + r.location + 2, r.location);
            failpc = r.location;
            return false;
@@ -120,6 +124,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
 
       } else if (r.reftype == -1) {
         if (result < -128 || result > 255) {
+           fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,".byte reference %i at %04x is out of range.\n",result,r.location);
            failpc = r.location;
            return false;
@@ -128,6 +133,7 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
 
       } else if (r.reftype == -2) {
         if (result < -32768 || result > 65535) {
+           fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,".word reference %i at %04x is out of range.\n",result,r.location);
            failpc = r.location;
            return false;

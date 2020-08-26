@@ -121,9 +121,9 @@ bool Tasm::processImmediate(int opcode)
       writeByte(opcode + (opcode<0x80 ? 0x10 : 0x40));
 
       if (nibble==0x3 || nibble==0xc || nibble==0xe) 
-         writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1));
+         writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum));
       else
-         writeByte(xref.tentativelyResolve(1,fetcher,modulename,pc-1));
+         writeByte(xref.tentativelyResolve(1,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum));
 
       return true;
    }
@@ -136,7 +136,7 @@ bool Tasm::processRelative(int opcode)
    if (opcode < 0x30 || opcode == 0x90) {
       opcode = opcode == 0x90 ? 0x8d : opcode; // handle BSR
       writeByte(opcode);
-      writeByte(xref.tentativelyResolve(0,fetcher,modulename,pc-1));
+      writeByte(xref.tentativelyResolve(0,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum));
       return true;
    }
    return false;
@@ -148,7 +148,7 @@ bool Tasm::processForcedExtended(int opcode)
       writeByte(opcode + (opcode<0x70 ? 0x10 :
                           opcode<0x80 ? 0x40 :
                                         0x70));
-      writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1));
+      writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum));
       return true;
    }
 
@@ -223,7 +223,7 @@ void Tasm::doAssembly(void) {
    }
 
    // tentatively get reference with two bytes
-   Reference r(pc, 2);
+   Reference r(pc, 2, fetcher.currentFilename(), fetcher.linenum);
    r.expression.parse(fetcher, modulename, pc);
    fetcher.skipWhitespace();
 
@@ -250,17 +250,17 @@ void Tasm::doAssembly(void) {
 
 void Tasm::doBlock(void) {
    fetcher.matchWhitespace();
-   pc += xref.immediatelyResolve(-1, fetcher, modulename, pc, ".block");
+   pc += xref.immediatelyResolve(-1, fetcher, modulename, pc, ".block", fetcher.currentFilename(), fetcher.linenum);
    fetcher.matcheol();
 }
 
 void Tasm::doFill(void) {
    fetcher.matchWhitespace();
-   int repeat = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill");
+   int repeat = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill", fetcher.currentFilename(), fetcher.linenum);
    fetcher.skipWhitespace();
    if (fetcher.skipChar(',')) {
       fetcher.skipWhitespace();
-      int w = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill");
+      int w = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".fill", fetcher.currentFilename(), fetcher.linenum);
       while (repeat--)
         writeByte(w);
    } else {
@@ -276,7 +276,7 @@ void Tasm::doText(void) {
      fetcher.skipWhitespace();
      char delim = fetcher.peekChar();
      if (fetcher.isQuotedChar() || (delim != '\'' && delim != '"')) {
-        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc));
+        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum));
      } else {
         fetcher.matchChar(delim);
         while (!fetcher.isChar(delim) && !fetcher.iseol())
@@ -315,7 +315,7 @@ void Tasm::doByte(void) {
 void Tasm::doWord(void) {
    fetcher.matchWhitespace();
    do {
-      writeWord(xref.tentativelyResolve(-2,fetcher,modulename,pc));
+      writeWord(xref.tentativelyResolve(-2,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum));
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
@@ -325,7 +325,7 @@ void Tasm::doEnd(void) {
    endReached = true;
    if (!fetcher.isBlankLine()) {
        fetcher.skipWhitespace();
-       execstart = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".end");
+       execstart = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".end", fetcher.currentFilename(), fetcher.linenum);
    }
 }
 
@@ -339,7 +339,7 @@ void Tasm::doExecStart(void) {
 
 void Tasm::doOrg(void) {
    fetcher.matchWhitespace();
-   archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org");
+   archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org", fetcher.currentFilename(), fetcher.linenum);
    fetcher.matcheol();
 }
 

@@ -9,10 +9,12 @@
 
 class Reference {
 public:
-  Reference(int loc, int rtype) : location(loc), reftype(rtype) {}
+  Reference(int loc, int rtype, char *fname, int linenum) : location(loc), reftype(rtype), filename(fname), lineNumber(linenum) {}
   Expression expression;
   int location;
   int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP 
+  char *filename;
+  int lineNumber;
 };
 
 class CRTable {
@@ -23,8 +25,8 @@ public:
   void addreference(Reference r);
   std::vector<Reference> references;
   bool resolve(Reference& r, int& result, std::string& offender);
-  int immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir);
-  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc);
+  int immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir, char *filename, int linenum);
+  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum);
   int tentativelyResolve(Reference& r);
   bool resolveReferences(int startpc, unsigned char *binary, int& failpc);
   void reportUnusedReferences(void);
