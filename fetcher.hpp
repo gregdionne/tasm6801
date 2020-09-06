@@ -13,9 +13,10 @@ class Fetcher {
   int argcnt;
   int linenum;
   int colnum;
+  int argfile;
   int keyID;
   Fetcher(int argc, char *argv[]) :
-      argc_(argc), argv_(argv), linenum(0), colnum(0) 
+      argc_(argc), argv_(argv), linenum(0), colnum(0), argfile(0) 
   {init();}
 
   char *currentFilename(void);

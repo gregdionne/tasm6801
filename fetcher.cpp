@@ -29,8 +29,8 @@ void Fetcher::processOpts(void)
 
 void Fetcher::spitLine(void)
 {
-  if (linenum && argcnt && argcnt<argc_) 
-    fprintf(stderr,"%s(%i): %s",argv_[argcnt],linenum,buf);
+  if (linenum && argcnt && argfile<argc_) 
+    fprintf(stderr,"%s(%i): %s",argv_[argfile],linenum,buf);
 }
 
 void Fetcher::die(const char *formatstr, ...)
@@ -38,8 +38,8 @@ void Fetcher::die(const char *formatstr, ...)
    va_list vl;
    va_start(vl, formatstr);
 
-   if (linenum && argcnt && argcnt<argc_) {
-     int len = fprintf(stderr,"%s(%i): ",argv_[argcnt],linenum);
+   if (linenum && argcnt && argfile<argc_) {
+     int len = fprintf(stderr,"%s:%i:%i: ",argv_[argfile],linenum,colnum);
      fprintf(stderr,"%s",buf);
      for (int i=0; i<len+colnum; i++)
        fprintf(stderr," ");
@@ -59,6 +59,7 @@ bool Fetcher::openNext(void)
       perror(argv_[argcnt]);
       exit(1);
     }
+    argfile=argcnt;
     argcnt++;
     return true;
   } else { 
