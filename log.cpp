@@ -147,7 +147,7 @@ void Log::writeC10(unsigned char *binary, size_t nbytes, int load_addr, int exec
       exec_addr = load_addr;
 
    spitleader();
-   filenameblock(argv_[1],exec_addr,load_addr);
+   filenameblock(argv_[argcnt],exec_addr,load_addr);
 
    spitleader();
 
