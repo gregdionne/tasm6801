@@ -72,7 +72,7 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
    }
 
    if (fetcher.isAlpha() || fetcher.isChar('_')) {
-      name = fetcher.isChar('_') ? modulename : "";
+      name = fetcher.isChar('_') ? std::string(modulename) + ":" : "";
       while (fetcher.isAlnum() || fetcher.isChar('_'))
          name = name + fetcher.getChar();
       return;
@@ -198,7 +198,7 @@ bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int
 
 Label::Label(const char *modulename, const char *labelname, char *filename, int linenum)
 {
-   name = labelname[0] == '_' ? std::string(modulename) + std::string(labelname) :
+   name = labelname[0] == '_' ? std::string(modulename) + ":" + std::string(labelname) :
                                 labelname;
    isdirty = false;
    used = false;
