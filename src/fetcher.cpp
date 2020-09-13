@@ -38,15 +38,19 @@ void Fetcher::die(const char *formatstr, ...)
    va_list vl;
    va_start(vl, formatstr);
 
+
    if (linenum && argcnt && argfile<argc_) {
-     int len = fprintf(stderr,"%s:%i:%i: ",argv_[argfile],linenum,colnum);
+     fprintf(stderr,"%s:%i:%i: error: ",argv_[argfile],linenum,colnum);
+     vfprintf(stderr,formatstr,vl);
+     fprintf(stderr,"\n");
      fprintf(stderr,"%s",buf);
-     for (int i=0; i<len+colnum; i++)
+     for (int i=0; i<colnum; i++)
        fprintf(stderr," ");
      fprintf(stderr,"^\n");
+   } else {
+     vfprintf(stderr,formatstr,vl);
+     fprintf(stderr,"\n");
    }
-   vfprintf(stderr,formatstr,vl);
-   fprintf(stderr,"\n");
    exit(1);
 }
   
@@ -472,6 +476,11 @@ int Fetcher::getEscapedChar(void)
              }
          }
          colnum = savecol;
+      } else if (c == 'x' && isxdigit(peekChar())) {
+         c = xdigit(getChar());
+         if (isxdigit(peekChar())) {
+             c = 16*c + xdigit(getChar());
+         }
       } else {
          c = c == 'n' ? '\n' :
              c == 'r' ? '\r' :
