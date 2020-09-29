@@ -348,7 +348,10 @@ void Tasm::doModule(void) {
    int n = 0;
    char *m = modulename;
    fetcher.matchWhitespace();
-   while (fetcher.isAlnum()) {
+   if (!fetcher.isAlpha())
+     fetcher.die("module name must begin with an alphabetical character");
+   
+   while (fetcher.isAlnum() || fetcher.isChar('_')) {
      *m++ = fetcher.getChar();
      if (++n >= MAXLABELLEN)
         fetcher.die("module has too many characters");
