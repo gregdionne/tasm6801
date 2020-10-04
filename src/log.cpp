@@ -29,9 +29,9 @@ void Log::init() {
 void Log::processOpts(void)
 {
    argcnt = 1;
-   isListCompact = false;
+   isCompact = false;
    while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--")) {
-      isListCompact |= !strcmp(argv_[argcnt],"-list-compact");
+      isCompact |= !strcmp(argv_[argcnt],"-compact");
       wUnused |= !strcmp(argv_[argcnt],"-Wunused");
       argcnt++;
    }
@@ -45,9 +45,9 @@ static char scratch[1024];
 
 void Log::initline(std::size_t n, int pc, int remaining)
 {
-   if (isListCompact && remaining)
+   if (isCompact && remaining)
       sprintf(output," %04X | ",pc);
-   else if (isListCompact)
+   else if (isCompact)
       sprintf(output,"      | ");
    else
       sprintf(output,"%04lu   %04X ",n,pc);
@@ -78,7 +78,7 @@ void Log::writeRemaining(std::size_t n, int& remaining, unsigned char binary[], 
 {
    while (remaining) {
       initline(n+1,here,remaining);
-      if (isListCompact)
+      if (isCompact)
          writeFmt(5, "%02X ", "\n", remaining, binary, byte, here);
       else
          writeFmt(8, "%02X", "\n", remaining, binary, byte, here);
@@ -114,9 +114,9 @@ void Log::writeLst(std::vector<std::string>& lines,
 	 if (remaining>0 && pc[n] != here) {
             finish(lines[n]);
             writeRemaining(n,remaining,binary,byte,here);
-         } else if (isListCompact && remaining <= 5) {
+         } else if (isCompact && remaining <= 5) {
             writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
-         } else if (isListCompact) {
+         } else if (isCompact) {
             writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
             writeRemaining(n,remaining,binary,byte,here);
          } else if (remaining <= 4) {

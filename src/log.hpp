@@ -35,7 +35,7 @@ private:
   FILE *fobj;
   FILE *fc10;
   int chksum;
-  int isListCompact;
+  int isCompact;
   int wUnused;
   int argcnt;
 };

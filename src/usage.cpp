@@ -3,7 +3,7 @@
 #include <string.h>
 #include <cstddef>
 
-const char *validOps[] = {"-Wunused","-list-compact","--"};
+const char *validOps[] = {"-Wunused","-compact","--"};
 
 void usage(char *argv[])
 {
