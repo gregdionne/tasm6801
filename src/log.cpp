@@ -100,35 +100,30 @@ void Log::writeLst(std::vector<std::string>& lines,
 
    for (std::size_t n=0; n<pc.size(); ++n) {
 
-      if (n<pc.size()-1) {
-         int there = pc[n+1];
-         if (there > endpc) 
-            there = endpc;
-         
-         int remaining = there - here;
-         if (remaining<0)
-            remaining = 0;
+      int there = n<pc.size()-1 ? pc[n+1] : endpc;
+      if (there > endpc) 
+         there = endpc;
+        
+      int remaining = there - here;
+      if (remaining<0)
+         remaining = 0;
 
-         initline(n+1, pc[n], remaining);
+      initline(n+1, pc[n], remaining);
 
-	 if (remaining>0 && pc[n] != here) {
-            finish(lines[n]);
-            writeRemaining(n,remaining,binary,byte,here);
-         } else if (isCompact && remaining <= 5) {
-            writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
-         } else if (isCompact) {
-            writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
-            writeRemaining(n,remaining,binary,byte,here);
-         } else if (remaining <= 4) {
-            writeFmt(4,"%02X ", lines[n], remaining, binary, byte, here);
-	 } else {
-            // 6 preserves tab spacing at the expense of eight-byte block alignment
-            writeFmt(8, "%02X", lines[n], remaining, binary, byte, here);
-            writeRemaining(n,remaining,binary,byte,here);
-         }
-      } else {
-         initline(n+1, pc[n], 0);
+      if (remaining>0 && pc[n] != here) {
          finish(lines[n]);
+         writeRemaining(n,remaining,binary,byte,here);
+      } else if (isCompact && remaining <= 5) {
+         writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+      } else if (isCompact) {
+         writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+         writeRemaining(n,remaining,binary,byte,here);
+      } else if (remaining <= 4) {
+         writeFmt(4,"%02X ", lines[n], remaining, binary, byte, here);
+      } else {
+         // 6 preserves tab spacing at the expense of eight-byte block alignment
+         writeFmt(8, "%02X", lines[n], remaining, binary, byte, here);
+         writeRemaining(n,remaining,binary,byte,here);
       }
    }
 
