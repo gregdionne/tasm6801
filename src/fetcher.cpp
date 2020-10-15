@@ -9,6 +9,11 @@
 #include <ctype.h>  //isxdigit
 #include <stdarg.h> //va_list, va_start
 
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#define strcasecmp _strcmp
+#endif
+
 void Fetcher::init(void)
 {
    processOpts();
