@@ -11,7 +11,7 @@
 
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
-#define strcasecmp _strcmp
+#define strcasecmp _stricmp
 #endif
 
 void Fetcher::init(void)
