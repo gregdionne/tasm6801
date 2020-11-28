@@ -43,6 +43,6 @@ If you are a user of the Virtual MC-10 you can load the .obj into memory at your
 
 Option      | Description
 ------      | -----------
--Wunused    | warn about unused labels in the source files.
--compact    | suppress line numbers in the output listing.
---          | treat subsequent arguments as file input (so you can compile a file that starts with "-", like "-filename.asm") 
+&#8209;Wunused    | warn about unused labels in the source files.
+&#8209;compact    | suppress line numbers in the output listing.
+&#8209;&#8209;          | treat subsequent arguments as file input (so you can compile a file that starts with "-", like "-filename.asm") 
