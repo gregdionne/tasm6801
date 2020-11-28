@@ -15,6 +15,7 @@ public:
   int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP 
   char *filename;
   int lineNumber;
+  std::string to_string(void);
 };
 
 class CRTable {

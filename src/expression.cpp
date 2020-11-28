@@ -137,6 +137,28 @@ bool ExpressionGroup::evaluate(std::vector<Label>& labels, std::string& offender
    }
 }
 
+std::string ExpressionGroup::to_string(void)
+{
+    if (itPrecedenceGroups->begin() == itPrecedenceGroups->end())
+       return term[0].to_string();
+    else {
+       std::string answer = operators.empty() ? "" : "(";
+
+       answer += operands[0].to_string();
+
+       std::string result = answer;
+       for (std::size_t i=0; i<operators.size(); ++i) {
+           answer = operands[i+1].to_string();
+
+           result = result + operators[i].conjunction + answer;
+       }
+
+       result += operators.empty() ? "" : ")";
+
+       return result;
+   }
+}
+
 void Expression::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    eg[0].parse(fetcher, modulename, pc);
@@ -182,6 +204,20 @@ bool Term::evaluate(std::vector<Label>& labels, std::string& offender, int& resu
     return success;
 }
 
+std::string Term::to_string(void)
+{
+   std::string result = expression.get() != NULL ? expression->to_string() :
+                        name             == ""   ? std::to_string(value) :
+                                                   name;
+
+   std::size_t n = complements.size();
+   for (std::size_t i=0; i<n; i++) {
+      result = complements[n-i-1] + result;
+   }
+
+   return result;
+}
+
 bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
 {
    if (eg.empty()) {
@@ -194,6 +230,12 @@ bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int
    } else {
       return false;
    }
+}
+
+std::string Expression::to_string(void)
+{
+   return eg.empty() ? std::to_string(value) :
+                       eg[0].to_string();
 }
 
 Label::Label(const char *modulename, const char *labelname, char *filename, int linenum)

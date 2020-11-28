@@ -41,6 +41,7 @@ public:
   Term() : expression(NULL) {}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
+  std::string to_string();
 private:
   std::string name;
   int value;
@@ -54,6 +55,7 @@ public:
    : precedenceGroups(precGroups), itPrecedenceGroups(itPrecGroups) {}
  void parse(Fetcher& fetcher, const char *modulename, int pc);
  bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
+ std::string to_string();
 private:
  std::vector<Term> term;
  std::vector<ExpressionGroup> operands;
@@ -68,6 +70,7 @@ public:
   Expression(int location) : value(location) {}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
+  std::string to_string();
 private:
   std::vector<ExpressionGroup> eg;
   int value;
