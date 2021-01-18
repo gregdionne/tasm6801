@@ -2,6 +2,7 @@
 // Distributed under MIT License
 #include <stdlib.h>
 #include <vector>
+#include <cstring>
 #include <string>
 #include "log.hpp"
 
