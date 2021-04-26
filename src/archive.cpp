@@ -6,4 +6,10 @@ void Archive::push_back(const char *line, int pcloc)
 {
   lines.push_back(line);
   pc.push_back(pcloc);
+  valid.push_back(false);
+}
+
+void Archive::validate()
+{
+  valid.back() = true;
 }

@@ -191,6 +191,8 @@ void Tasm::doAssembly(void) {
    if (!fetcher.skipKeyword(mnemonics))
       fetcher.die("assembly instruction expected");
 
+   archive.validate();
+
    int opcode = fetcher.keyID;
 
    // handle aliases
@@ -252,6 +254,7 @@ void Tasm::doBlock(void) {
    fetcher.matchWhitespace();
    pc += xref.immediatelyResolve(-1, fetcher, modulename, pc, ".block", fetcher.currentFilename(), fetcher.linenum);
    fetcher.matcheol();
+   archive.validate();
 }
 
 void Tasm::doFill(void) {
@@ -268,6 +271,7 @@ void Tasm::doFill(void) {
         writeByte(0);
    }
    fetcher.matcheol();
+   archive.validate();
 }
 
 void Tasm::doText(void) {
@@ -286,6 +290,7 @@ void Tasm::doText(void) {
      fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
+   archive.validate();
 }
 
 void Tasm::doNString(void) {
@@ -301,6 +306,7 @@ void Tasm::doNString(void) {
    }
    fetcher.matchChar(delim);
    fetcher.matcheol();
+   archive.validate();
 }
 
 void Tasm::doCString(void) {
@@ -319,6 +325,7 @@ void Tasm::doWord(void) {
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
+   archive.validate();
 }
 
 void Tasm::doEnd(void) {
@@ -339,7 +346,7 @@ void Tasm::doExecStart(void) {
 
 void Tasm::doOrg(void) {
    fetcher.matchWhitespace();
-   archiver.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org", fetcher.currentFilename(), fetcher.linenum);
+   archive.pc.back() = pc = xref.immediatelyResolve(-1, fetcher, modulename, pc, ".org", fetcher.currentFilename(), fetcher.linenum);
    fetcher.matcheol();
 }
 
@@ -404,6 +411,7 @@ void Tasm::doLabel(void) {
 
    if (fetcher.isBlankLine()) {
       xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+      archive.validate();
       return;
    }
 
@@ -411,6 +419,7 @@ void Tasm::doLabel(void) {
       fetcher.matchWhitespace();
    else if (fetcher.isBlankLine()) {
       xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+      archive.validate();
       return;
    } 
 
@@ -482,7 +491,7 @@ void Tasm::process(void) {
 void Tasm::failReference(int endpc)
 {
   log.init();
-  log.writeLst(archiver.lines, archiver.pc, startpc, endpc, binary, nbytes);
+  log.writeLst(archive, startpc, endpc, binary, nbytes);
   exit(1);
 }
 
@@ -498,14 +507,14 @@ void Tasm::resolveReferences(void) {
 
 int Tasm::execute(void) {
   while (fetcher.getLine()) {
-    archiver.push_back(fetcher.peekLine(),pc);
+    archive.push_back(fetcher.peekLine(),pc);
     process();
   }
 
   resolveReferences();
 
   log.init();
-  log.writeLst(archiver.lines, archiver.pc, startpc, pc, binary, nbytes);
+  log.writeLst(archive, startpc, pc, binary, nbytes);
   log.writeObj(binary,static_cast<std::size_t>(nbytes));
   log.writeC10(binary,static_cast<std::size_t>(nbytes),startpc,execstart);
 

@@ -92,8 +92,7 @@ void Log::writeRemaining(std::size_t n, int& remaining, unsigned char binary[], 
    }
 }
 
-void Log::writeLst(std::vector<std::string>& lines,
-                   std::vector<int> pc,
+void Log::writeLst(Archive &archive,
                    int startpc,
                    int endpc,
                    unsigned char binary[],
@@ -105,9 +104,9 @@ void Log::writeLst(std::vector<std::string>& lines,
    if (endpc-startpc >= binsize)
       endpc = startpc+binsize;
 
-   for (std::size_t n=0; n<pc.size(); ++n) {
+   for (std::size_t n=0; n<archive.pc.size(); ++n) {
 
-      int there = n<pc.size()-1 ? pc[n+1] : endpc;
+      int there = n < archive.pc.size()-1 ? archive.pc[n+1] : endpc;
       if (there > endpc) 
          there = endpc;
         
@@ -115,21 +114,21 @@ void Log::writeLst(std::vector<std::string>& lines,
       if (remaining<0)
          remaining = 0;
 
-      initline(n+1, pc[n], remaining);
+      initline(n+1, archive.pc[n], archive.valid[n]);
 
-      if (remaining>0 && pc[n] != here) {
-         finish(lines[n]);
+      if (remaining>0 && archive.pc[n] != here) {
+         finish(archive.lines[n]);
          writeRemaining(n,remaining,binary,byte,here);
       } else if (isCompact && remaining <= 5) {
-         writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+         writeFmt(5,"%02X ", archive.lines[n], remaining, binary, byte, here);
       } else if (isCompact) {
-         writeFmt(5,"%02X ", lines[n], remaining, binary, byte, here);
+         writeFmt(5,"%02X ", archive.lines[n], remaining, binary, byte, here);
          writeRemaining(n,remaining,binary,byte,here);
       } else if (remaining <= 4) {
-         writeFmt(4,"%02X ", lines[n], remaining, binary, byte, here);
+         writeFmt(4,"%02X ", archive.lines[n], remaining, binary, byte, here);
       } else {
          // 6 preserves tab spacing at the expense of eight-byte block alignment
-         writeFmt(8, "%02X", lines[n], remaining, binary, byte, here);
+         writeFmt(8, "%02X", archive.lines[n], remaining, binary, byte, here);
          writeRemaining(n,remaining,binary,byte,here);
       }
    }

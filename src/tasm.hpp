@@ -75,7 +75,7 @@ private:
   int argc_;
   CRTable xref;
   Macro macro;
-  Archive archiver;
+  Archive archive;
   unsigned char binary[65536];
   char modulename[MAXLABELLEN];
   char labelname[MAXLABELLEN];

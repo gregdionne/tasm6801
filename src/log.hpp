@@ -3,6 +3,8 @@
 #ifndef LOG_HPP
 #define LOG_HPP
 
+#include "archive.hpp"
+
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -19,7 +21,7 @@ class Log {
   void finish(std::string line);
   void writeObj(unsigned char *binary, size_t nbytes);
   void writeC10(unsigned char *binary, size_t nbytes, int loadaddr, int execaddr);
-  void writeLst(std::vector<std::string>& lines, std::vector<int> pc, int startpc, int endpc, unsigned char binary[], int binsize); 
+  void writeLst(Archive& archive, int startpc, int endpc, unsigned char binary[], int binsize);
 private:
   void processOpts(void);
   void writeFmt(int count, const char *fmt, std::string line, int& remaining, unsigned char binary[], int& byte, int& here);
