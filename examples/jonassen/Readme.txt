@@ -22,4 +22,7 @@ plaszix
   Plasma & 1 bit music on the mc10 this is a 16K version... code/music/data is from $5000..$6020 /Simon :-)  
   Aug 29, 2015  
 
-
+------
+1bit2voice
+  Play a foot tappin' tune
+  Aug 31, 2020
