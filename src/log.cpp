@@ -6,12 +6,6 @@
 #include <string>
 #include "log.hpp"
 
-#ifdef _MSC_VER
-#define WRITE_BINARY "wb"
-#else
-#define WRITE_BINARY "w"
-#endif
-
 void Log::init() {
   processOpts();
   std::string filename = argv_[argcnt];
@@ -22,12 +16,12 @@ void Log::init() {
      exit(1);
   }
   filename = head + ".obj";
-  if (!(fobj=fopen(filename.c_str(),WRITE_BINARY))) {
+  if (!(fobj=fopen(filename.c_str(),"wb"))) {
      fprintf(stderr,"Couldn't open object file.\n");
      exit(1);
   }
   filename = head + ".c10";
-  if (!(fc10=fopen(filename.c_str(),WRITE_BINARY))) {
+  if (!(fc10=fopen(filename.c_str(),"wb"))) {
      fprintf(stderr,"Couldn't open object file.\n");
      exit(1);
   }
