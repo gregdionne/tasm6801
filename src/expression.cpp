@@ -33,9 +33,17 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
 {
    fetcher.skipWhitespace();
 
+   while (fetcher.skipChar('+')) {
+     fetcher.skipWhitespace();
+   }
+
    while (fetcher.isChar('-') || fetcher.isChar('~')) {
       complements.push_back(fetcher.getChar());
       fetcher.skipWhitespace();
+
+      while (fetcher.skipChar('+')) {
+        fetcher.skipWhitespace();
+      }
    }
   
    if (fetcher.skipChar('$')) { // PC or hex
