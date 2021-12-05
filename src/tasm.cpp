@@ -100,6 +100,25 @@ void Tasm::getLabelName(void) {
    *l = '\0';
 }
 
+void Tasm::addLabel(const char *modulename, const char *labelname, int location, char *filename, int linenum) {
+  if (!xref.addlabel(modulename, labelname, location, filename, linenum)) {
+    fetcher.die("label \"%s\" redefined", labelname);
+  }
+}
+
+void Tasm::addLabel(Label lbl) {
+  if (!xref.addlabel(lbl)) {
+    fetcher.die("label \"%s\" redefined", lbl.name.c_str());
+  }
+}
+
+void Tasm::addModule(const char *modulename, char *filename, int linenum) {
+  if (!xref.addmodule(modulename, filename, linenum)) {
+    fetcher.die("module \"%s\" redefined", modulename);
+  }
+}
+
+
 bool Tasm::processInherent(int opcode)
 {
    if (opcode<0x20 || (opcode>0x2f && opcode<0x60)) {
@@ -365,6 +384,7 @@ void Tasm::doModule(void) {
    }
    *m = '\0';
    fetcher.matcheol();
+   addModule(modulename,fetcher.currentFilename(),fetcher.linenum);
 }
 
 void Tasm::doMSFirst(void) {
@@ -403,14 +423,14 @@ void Tasm::doDirective(void) {
 void Tasm::doEqu(void) {
    Label l(modulename, labelname, fetcher.currentFilename(), fetcher.linenum);
    l.expression.parse(fetcher, modulename, pc);
-   xref.addlabel(l);
+   addLabel(l);
 }
 
 void Tasm::doLabel(void) {
    getLabelName();
 
    if (fetcher.isBlankLine()) {
-      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+      addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       archive.validate();
       return;
    }
@@ -418,7 +438,7 @@ void Tasm::doLabel(void) {
    if (!fetcher.skipChar(':'))
       fetcher.matchWhitespace();
    else if (fetcher.isBlankLine()) {
-      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+      addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       archive.validate();
       return;
    } 
@@ -432,17 +452,17 @@ void Tasm::doLabel(void) {
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".module")) {
          doModule();
-         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+         addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          fetcher.matcheol();
       } else if (!strcmp(directives[fetcher.keyID],".org")) {
          doOrg();
-         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+         addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          fetcher.matcheol();
       } else {
-         xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+         addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
          doDirective();
    } else {
-      xref.addlabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
+      addLabel(modulename,labelname,pc,fetcher.currentFilename(),fetcher.linenum);
       doAssembly();
    }
 }

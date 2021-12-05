@@ -18,11 +18,26 @@ bool CRTable::addlabel(Label lbl)
 {
   for (std::size_t i=0; i<labels.size(); ++i)
     if (labels[i].name == lbl.name) {
-      fprintf(stderr,"Duplicate definition of label \"%s\"\n",lbl.name.c_str());
+      fprintf(stderr,"%s:%i: error: redefinition of label \"%s\"\n", lbl.fileName, lbl.lineNumber, lbl.name.c_str());
+      fprintf(stderr,"%s:%i: previous definition of label \"%s\"\n", labels[i].fileName, labels[i].lineNumber, lbl.name.c_str());
       return false;
     }
-  
+
   labels.push_back(lbl);
+  return true;
+}
+
+bool CRTable::addmodule(const char *modulename, char *filename, int linenum)
+{
+  Module m(modulename, filename, linenum);
+  for (std::size_t i=0; i<modules.size(); ++i)
+    if (modules[i].name == m.name) {
+      fprintf(stderr,"%s:%i: error: redefinition of module \"%s\"\n", m.fileName, m.lineNumber, m.name.c_str());
+      fprintf(stderr,"%s:%i: previous definition of module \"%s\"\n", modules[i].fileName, modules[i].lineNumber, m.name.c_str());
+      return false;
+    }
+
+  modules.push_back(m);
   return true;
 }
 

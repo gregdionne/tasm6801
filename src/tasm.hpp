@@ -32,7 +32,9 @@ private:
 
   bool isLabelName(void);
   void getLabelName(void);
-  int getLabelExpression(void);
+  void addLabel(const char *modulename, const char *labelname, int location, char *filename, int linenum);
+  void addLabel(Label lbl);
+  void addModule(const char *modulename, char *filename, int linenum);
 
   bool processInherent(int opcode);
   bool processImmediate(int opcode);
