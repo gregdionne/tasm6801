@@ -188,12 +188,23 @@ void Log::spitblock(unsigned char *buf, std::size_t buflen, int blocktype)
 
 void Log::filenameblock(char *filearg, int start_addr, int load_addr)
 {
-   std::size_t i;
    unsigned char buf[15];
    std::string filename = filearg;
-   std::string head = filename.substr(0,filename.rfind("."));
+   std::size_t backs = filename.rfind("\\"); // dos
+   std::size_t slash = filename.rfind("/");  // linux
+   filename = filename.substr(
+       backs == std::string::npos && slash == std::string::npos ? 0
+       : backs == std::string::npos ? slash + 1
+       : slash == std::string::npos ? backs + 1
+       : backs > slash ? backs + 1
+                       : slash + 1,
+       std::string::npos);
 
-   const char *fname = head.c_str();
+   filename = filename.substr(0,filename.rfind("."));
+
+   const char *fname = filename.c_str();
+
+   std::size_t i=0;
    for (i=0; i<strlen(fname) && i<8; i++) 
      buf[i] = static_cast<unsigned char>(toupper(fname[i]));
    for (; i<8; i++)
