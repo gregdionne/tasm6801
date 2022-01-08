@@ -24,6 +24,8 @@ Preprocessor macros are not yet supported, however you may use "#define" to pref
 
 Expressions respect traditional operator precedence: (e.g. "a+b\*c" evaluates as "a + (b\*c)" instead of "(a+b) \* c")
 
+You may specify quaternary constants by prefixing with '&' or postfixing with 'Q' or 'q' in the same fashion as binary, octal, and hexadecimal constants (prefixed by '%', '@', and '$'; or postfixed by 'B' or 'b', 'O' or 'o', and 'H' or 'h'; respectively).
+
 ## Instructions
 Most modern linux C++ compilers should be able to build the code as-is.  Tested on Apple LLVM version 10.0.1 (clang-1001.0.46.4).
 

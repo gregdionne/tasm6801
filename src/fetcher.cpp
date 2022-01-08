@@ -406,6 +406,11 @@ int Fetcher::getOctalByte(void)
    return getNumber(isodigit, digit, 8, 0xff, "octal digit expected");
 }
 
+int Fetcher::getOctalWord(void)
+{
+   return getNumber(isodigit, digit, 8, 0xffff, "octal digit expected");
+}
+
 int Fetcher::getDecimalByte(void)
 {
    return getNumber(isdigit, digit, 10, 0xff, "decimal digit expected");

@@ -59,6 +59,7 @@ class Fetcher {
   int getQuaternaryByte(void);
   int getQuaternaryWord(void);
   int getOctalByte(void);
+  int getOctalWord(void);
   int getHexadecimalByte(void);
   int getHexadecimalWord(void);
   int getDecimalByte(void);

@@ -60,6 +60,16 @@ void Term::parse(Fetcher& fetcher, const char *modulename, int pc)
       return;
    }
 
+   if (fetcher.skipChar('@')) {
+      value = fetcher.getOctalWord();
+      return;
+   }
+
+   if (fetcher.skipChar('&')) {
+      value = fetcher.getQuaternaryWord();
+      return;
+   }
+
    if (fetcher.skipChar('%')) {
       value = fetcher.getBinaryWord();
       return;
