@@ -73,34 +73,50 @@ int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modul
    return result;
 }
 
-int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum) 
+int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wRelative)
 {
    Reference r(pc, reftype, filename, linenum);
    r.expression.parse(fetcher, modulename, pc);
 
-   int w = tentativelyResolve(r);
-   if (reftype == 0 && (w < -128 || w > 127))
-      fetcher.die("branch destination $%04X out of reach from $%04X",w+pc,pc);
+   int w = tentativelyResolve(r, fetcher, wRelative);
+
 
    return w;
 }
 
-int CRTable::tentativelyResolve(Reference& r)
+int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative)
 {
    int result;
    std::string offender;
    if (resolve(r, result, offender)) {
       if (r.reftype == 0) {
          result -= r.location + 2;
+         if (result < -128 || result > 127) {
+            fetcher.die("branch destination $%04X out of reach from $%04X",result+r.location,r.location);
+         }
       }
+
+      if (wRelative && r.reftype > 2) {
+         int relAddr = result - (r.location + 2);
+         if (-128 <= relAddr && relAddr <= 127) {
+            fprintf(stderr,"%s:%i: warning: ",r.filename,r.lineNumber);
+            fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-wRelative].\n",
+                    r.reftype == 3 ? "JMP" : "JSR",
+                    r.location,
+                    r.to_string().c_str(),
+                    r.reftype == 3 ? "BRA" : "BSR");
+         }
+      }
+
       return result;
    } 
 
    addreference(r);
-   return r.reftype==2 ? 0xdead : 0;
+   return r.reftype>=2 ? 0xdead : 0;
 }
 
-bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc) {
+bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wRelative)
+{
    for (std::size_t i=0; i<references.size(); i++) {
       Reference &r = references[i];
       int result;
@@ -114,13 +130,26 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
          return false;
       }
 
-      if (r.reftype == 2) {
+      if (r.reftype >= 2) {
         if (result < -32768 || result > 65535) {
            fprintf(stderr,"%s:%i: error: ",r.filename,r.lineNumber);
            fprintf(stderr,"two-byte operand \"%s\", evaluating to %i for instruction at %04x, is out of range [-32768,65535].\n",refstr.c_str(), result, r.location);
            failpc = r.location;
            return false;
         }
+
+        if (wRelative && r.reftype > 2) {
+          int relAddr = result - (r.location + 2);
+          if (-128 <= relAddr && relAddr <= 127) {
+             fprintf(stderr,"%s:%i: warning: ",r.filename,r.lineNumber);
+             fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-wRelative].\n",
+                     r.reftype == 3 ? "JMP" : "JSR",
+                     r.location,
+                     refstr.c_str(),
+                     r.reftype == 3 ? "BRA" : "BSR");
+          }
+        }
+
         binary[r.location - startpc + 1] = (result >> 8) & 0xff;
         binary[r.location - startpc + 2] = result & 0xff;
 
@@ -166,5 +195,3 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc)
 
    return true;
 }
-
-

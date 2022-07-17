@@ -86,7 +86,8 @@ private:
   int startpc;
   int execstart;
   int endReached;
-  int wUnused;
+  bool wUnused;
+  bool wRelative;
   int argcnt;
 };
 

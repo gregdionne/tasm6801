@@ -12,7 +12,7 @@ public:
   Reference(int loc, int rtype, char *fname, int linenum) : location(loc), reftype(rtype), filename(fname), lineNumber(linenum) {}
   Expression expression;
   int location;
-  int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP 
+  int reftype; // -2 == WORD, -1 == BYTE, 0 == RELOP,  1 == BYTEOP, 2 == WORDOP, 3 == JMP, 4 == JSR
   char *filename;
   int lineNumber;
   std::string to_string(void);
@@ -28,7 +28,7 @@ public:
 
 class CRTable {
 public:
-  CRTable(void) {}
+  CRTable() {}
   bool addlabel(const char *modulename, const char *labelname, int location, char *filename, int linenum);
   bool addmodule(const char *modulename, char *filename, int linenum);
   bool addlabel(Label l);
@@ -36,9 +36,9 @@ public:
   std::vector<Reference> references;
   bool resolve(Reference& r, int& result, std::string& offender);
   int immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir, char *filename, int linenum);
-  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum);
-  int tentativelyResolve(Reference& r);
-  bool resolveReferences(int startpc, unsigned char *binary, int& failpc);
+  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wRelative);
+  int tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative);
+  bool resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wRelative);
   void reportUnusedReferences(void);
 
 private:

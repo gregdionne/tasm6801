@@ -66,14 +66,15 @@ private:
 
 class Expression {
 public:
-  Expression() {eg.push_back(ExpressionGroup(&opTable.precedenceGroups, opTable.precedenceGroups.begin()));}
-  Expression(int location) : value(location) {}
+  Expression() : value(0xdead), resolved(false) {eg.push_back(ExpressionGroup(&opTable.precedenceGroups, opTable.precedenceGroups.begin()));}
+  Expression(int location) : value(location), resolved(true) {}
   void parse(Fetcher& fetcher, const char *modulename, int pc);
   bool evaluate(std::vector<Label>& labels, std::string& offender, int& result);
   std::string to_string();
 private:
   std::vector<ExpressionGroup> eg;
   int value;
+  bool resolved;
   static OpTable opTable;
 };
 

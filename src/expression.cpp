@@ -238,11 +238,11 @@ std::string Term::to_string(void)
 
 bool Expression::evaluate(std::vector<Label>& labels, std::string& offender, int& result)
 {
-   if (eg.empty()) {
+   if (resolved) {
       result = value;
       return true;
    } else if (eg[0].evaluate(labels, offender, result)) {
-      eg.clear();
+      resolved = true;
       value = result;
       return true;
    } else {
