@@ -73,18 +73,18 @@ int CRTable::immediatelyResolve(int reftype, Fetcher& fetcher, const char *modul
    return result;
 }
 
-int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wRelative)
+int CRTable::tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wBranch)
 {
    Reference r(pc, reftype, filename, linenum);
    r.expression.parse(fetcher, modulename, pc);
 
-   int w = tentativelyResolve(r, fetcher, wRelative);
+   int w = tentativelyResolve(r, fetcher, wBranch);
 
 
    return w;
 }
 
-int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative)
+int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wBranch)
 {
    int result;
    std::string offender;
@@ -96,11 +96,11 @@ int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative)
          }
       }
 
-      if (wRelative && r.reftype > 2) {
+      if (wBranch && r.reftype > 2) {
          int relAddr = result - (r.location + 2);
          if (-128 <= relAddr && relAddr <= 127) {
             fprintf(stderr,"%s:%i: warning: ",r.filename,r.lineNumber);
-            fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-wRelative].\n",
+            fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-Wbranch].\n",
                     r.reftype == 3 ? "JMP" : "JSR",
                     r.location,
                     r.to_string().c_str(),
@@ -115,7 +115,7 @@ int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative)
    return r.reftype>=2 ? 0xdead : 0;
 }
 
-bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wRelative)
+bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wBranch)
 {
    for (std::size_t i=0; i<references.size(); i++) {
       Reference &r = references[i];
@@ -138,11 +138,11 @@ bool CRTable::resolveReferences(int startpc, unsigned char *binary, int& failpc,
            return false;
         }
 
-        if (wRelative && r.reftype > 2) {
+        if (wBranch && r.reftype > 2) {
           int relAddr = result - (r.location + 2);
           if (-128 <= relAddr && relAddr <= 127) {
              fprintf(stderr,"%s:%i: warning: ",r.filename,r.lineNumber);
-             fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-wRelative].\n",
+             fprintf(stderr,"%s instruction at $%04X to reference \"%s\" can be replaced by %s [-Wbranch].\n",
                      r.reftype == 3 ? "JMP" : "JSR",
                      r.location,
                      refstr.c_str(),

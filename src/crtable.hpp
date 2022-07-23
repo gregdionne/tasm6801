@@ -36,9 +36,9 @@ public:
   std::vector<Reference> references;
   bool resolve(Reference& r, int& result, std::string& offender);
   int immediatelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, const char *dir, char *filename, int linenum);
-  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wRelative);
-  int tentativelyResolve(Reference& r, Fetcher& fetcher, bool wRelative);
-  bool resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wRelative);
+  int tentativelyResolve(int reftype, Fetcher& fetcher, const char *modulename, int pc, char *filename, int linenum, bool wBranch);
+  int tentativelyResolve(Reference& r, Fetcher& fetcher, bool wBranch);
+  bool resolveReferences(int startpc, unsigned char *binary, int& failpc, bool wBranch);
   void reportUnusedReferences(void);
 
 private:

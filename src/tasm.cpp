@@ -34,7 +34,7 @@ void Tasm::processOpts(void)
    wUnused = false;
    while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--")) {
       wUnused |= !strcmp(argv_[argcnt],"-Wunused");
-      wRelative |= !strcmp(argv_[argcnt],"-Wrelative");
+      wBranch |= !strcmp(argv_[argcnt],"-Wbranch");
       argcnt++;
    }
 
@@ -141,9 +141,9 @@ bool Tasm::processImmediate(int opcode)
       writeByte(opcode + (opcode<0x80 ? 0x10 : 0x40));
 
       if (nibble==0x3 || nibble==0xc || nibble==0xe) 
-         writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wRelative));
+         writeWord(xref.tentativelyResolve(2,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wBranch));
       else
-         writeByte(xref.tentativelyResolve(1,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wRelative));
+         writeByte(xref.tentativelyResolve(1,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wBranch));
 
       return true;
    }
@@ -156,7 +156,7 @@ bool Tasm::processRelative(int opcode)
    if (opcode < 0x30 || opcode == 0x90) {
       opcode = opcode == 0x90 ? 0x8d : opcode; // handle BSR
       writeByte(opcode);
-      writeByte(xref.tentativelyResolve(0,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wRelative));
+      writeByte(xref.tentativelyResolve(0,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wBranch));
       return true;
    }
    return false;
@@ -171,7 +171,7 @@ bool Tasm::processForcedExtended(int opcode)
       int refType = opcode == 0x7e ? 3 :
                               0xbd ? 4 :
                               2;
-      int address = xref.tentativelyResolve(refType,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wRelative);
+      int address = xref.tentativelyResolve(refType,fetcher,modulename,pc-1,fetcher.currentFilename(),fetcher.linenum,wBranch);
       writeByte(opcode);
       writeWord(address);
       return true;
@@ -263,12 +263,12 @@ void Tasm::doAssembly(void) {
 
    if (checkIndexed()) {
       r.reftype = 1; // only one byte required
-      doIndexed(opcode, xref.tentativelyResolve(r, fetcher, wRelative));
+      doIndexed(opcode, xref.tentativelyResolve(r, fetcher, wBranch));
       fetcher.matcheol();
       return;
    }
 
-   int address = xref.tentativelyResolve(r, fetcher, wRelative);
+   int address = xref.tentativelyResolve(r, fetcher, wBranch);
 
    if (opcode < 0x70 || address < -128 || 255 < address) {
       // 0xdead or other 16-bit address
@@ -312,7 +312,7 @@ void Tasm::doText(void) {
      fetcher.skipWhitespace();
      char delim = fetcher.peekChar();
      if (fetcher.isQuotedChar() || (delim != '\'' && delim != '"')) {
-        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum,wRelative));
+        writeByte(xref.tentativelyResolve(-1,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum,wBranch));
      } else {
         fetcher.matchChar(delim);
         while (!fetcher.isChar(delim) && !fetcher.iseol())
@@ -353,7 +353,7 @@ void Tasm::doByte(void) {
 void Tasm::doWord(void) {
    fetcher.matchWhitespace();
    do {
-      writeWord(xref.tentativelyResolve(-2,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum,wRelative));
+      writeWord(xref.tentativelyResolve(-2,fetcher,modulename,pc,fetcher.currentFilename(),fetcher.linenum,wBranch));
       fetcher.skipWhitespace();
    } while (fetcher.skipChar(',') && !fetcher.isBlankLine());
    fetcher.matcheol();
@@ -530,7 +530,7 @@ void Tasm::failReference(int endpc)
 
 void Tasm::resolveReferences(void) {
   int failpc;
-  if (!xref.resolveReferences(startpc, binary, failpc, wRelative))
+  if (!xref.resolveReferences(startpc, binary, failpc, wBranch))
      failReference(failpc);
 
   if (wUnused)

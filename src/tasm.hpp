@@ -87,7 +87,7 @@ private:
   int execstart;
   int endReached;
   bool wUnused;
-  bool wRelative;
+  bool wBranch;
   int argcnt;
 };
 
