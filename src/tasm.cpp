@@ -32,6 +32,7 @@ void Tasm::processOpts(void)
 {
    argcnt = 1;
    wUnused = false;
+   wBranch = false;
    while (argcnt < argc_ && !strncmp(argv_[argcnt],"-",1) && strcmp(argv_[argcnt],"--")) {
       wUnused |= !strcmp(argv_[argcnt],"-Wunused");
       wBranch |= !strcmp(argv_[argcnt],"-Wbranch");
