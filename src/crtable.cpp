@@ -92,7 +92,7 @@ int CRTable::tentativelyResolve(Reference& r, Fetcher& fetcher, bool wBranch)
       if (r.reftype == 0) {
          result -= r.location + 2;
          if (result < -128 || result > 127) {
-            fetcher.die("branch destination $%04X out of reach from $%04X",result+r.location,r.location);
+            fetcher.die("branch destination $%04X out of reach from $%04X",result+r.location+2,r.location);
          }
       }
 
