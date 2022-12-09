@@ -26,3 +26,9 @@ plaszix
 1bit2voice
   Play a foot tappin' tune
   Aug 31, 2020
+------
+rcube
+  Show a spinning cube in RG
+  Has a list of points and vertices.
+  Construct any wireframe object your heart desires!
+  Dec 8, 2022
