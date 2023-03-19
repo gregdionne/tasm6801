@@ -1,0 +1,387 @@
+;********************************************
+; 2 voice squarewave pattern player 
+; for 1 bit output at $bfff on MC10
+; (C) 2021 Simon Jonassen (invisible man)
+; tweaked by Greg so it uses a tempo
+;
+; FREE FOR ALL - USE AS YOU SEE FIT, JUST
+; REMEMBER WHERE IT ORGINATED AND GIVE CREDIT
+;********************************************
+;		PROCESSOR	6803
+;********************************************
+; MC-10 clock is .89488625Mhz or 894.88625 KHz
+; We need 7.0Khz interrupts so 894.88625 / 7.0	
+; = 128 (127.9xxxx rounded up) 
+;********************************************
+TVAL		EQU		$80		; Timer period 128
+;*************************************
+;some equates for the 6803 hardware
+;*************************************
+TCSR		EQU		$0008		; Timer Control Status Register
+TIMER		EQU		$0009		; Counter ($9/$a)
+OCR		EQU		$000B		; Output Compare Register ($b/$c)
+OCV		EQU		$4206		; Output Compare interrupt Vector
+TCSRVAL		EQU		$08		; bit settings for the TCSR
+;********************************************
+;* Main
+;********************************************
+		org		$4c00
+start		sei				;disable irq's
+;********************************************
+; double note values to save shifts
+; on the sequencer
+; it's a freq table lookup (them be words)
+;********************************************
+		ldx		#zix
+convert		ldd		,x
+		asld	
+		std		,x
+		inx
+		inx
+		cpx		#endzix
+		blo		convert
+;********************************************
+; SETUP IRQ ROUTINE
+;********************************************
+		ldaa		#$7e		;load 'jmp' instruction opcode
+		ldx		#note		;irq handler address after JMP instruction
+		staa		OCV		;store into OCV vector
+		stx		OCV+1
+		ldd		#TVAL		;set the timer duration
+		std		OCR
+		staa		TIMER		;reset the counter to $FFF8
+		ldaa		#TCSRVAL	;Enable the timer interrupt
+		staa		TCSR
+
+;********************************************
+; ENABLE IRQ
+;********************************************
+		cli				;enable irq's
+		rts
+
+;********************************************
+; PLAYER ROUTINE
+;********************************************
+note		staa		TIMER		;Reset the timer
+		ldaa		TCSR		;Reset the OCF flag
+		ldd		#TVAL		;set the timer duration
+		std		OCR
+		dec		frames		;
+		bne		sum		;(2 ticks per row (ish))
+		ldaa		tempo		;$c0
+		staa		frames	
+		com		frames+1
+		beq		sum
+;********************************************
+; SEQUENCER
+;********************************************
+
+oldx		ldx		#zix		;save pattern position
+curnote		ldd		,x
+		inx
+		inx
+		cpx		#endzix
+		bne		plnote
+		ldx		#zix
+plnote		stx		oldx+1		;restore pattern position to start
+		staa		frq1+2
+		stab		frq2+2
+frq1		ldx		#freqtab	;get the right freq
+		ldx		,x
+		stx		freq+1		;store
+frq2		ldx		#freqtab
+		ldx		,x
+		stx		freq2+1
+		rti
+
+;********************************************
+; NOTE ROUTINE
+;********************************************
+
+sum		ldd		#$0000 
+freq		addd		#$0000
+		std		sum+1
+
+
+sum2		ldd		#$0000	
+		bcs		freq2		;tripped on overflow from above summation
+		addd		freq2+1		;add the new freq (ch2)
+		std		sum2+1		;store it
+		bcs		bit_on		;carry (overflow on above add)
+
+bit_off		ldaa		#0		;turn off 1bit
+		staa		$bfff		;set the hardware
+		rti
+
+freq2		addd		#$0000		;our 1st SUM tripped an overflow
+		std		sum2+1		;and we store back to sum #2
+bit_on		ldaa		#128		;turn on 1bit
+		staa		$bfff		;set the hardware
+		rti
+;******************************************************
+; variables 
+;******************************************************
+frames		.word	$c800
+
+		.org (($+0FFH) & (0FF00H))
+;******************************************************
+;equal tempered 12 note per octave frequency table
+;
+;7Khz vals here
+;
+;val= freq / 7.000 / 8		'7.0Khz 
+;counter=val*256
+;
+;actual musical freq's - like say 32,70Hz for c1 etc...
+;
+;entry 0 is SILENCE (would be c1)
+;******************************************************
+
+
+freqtab
+c1		.word	$0000,$009E,$00A8,$00B2,$00BC,$00C8,$00D3,$00E0,$00ED,$00FB,$010A,$011A
+c2		.word	$012B,$013D,$0150,$0164,$0179,$018F,$01A7,$01C0,$01DB,$01F7,$0215,$0234
+c3		.word	$0256,$027A,$029F,$02C7,$02F1,$031E,$034E,$0380,$03B5,$03EE,$042A,$0469
+c4		.word	$04AC,$04F3,$053E,$058E,$05E3,$063C,$069B,$0700,$076B,$07DB,$0853,$08D2
+c5		.word	$0958,$09E6,$0A7D,$0B1D,$0BC6,$0C79,$0D37,$0E00,$0ED5,$0FB7,$10A6,$11A4
+c6		.word	$12B0,$13CC,$14FA,$1639,$178B,$18F2,$1A6E,$1C00,$1DAA,$1F6E,$214C,$2347
+c7		.word	$2560,$2799,$29F4,$2C72,$2F17,$31E4,$34DB,$3800,$3B54,$3EDB,$4298,$468E
+c8		.word	$4AC0,$4F32,$53E7,$58E5,$5E2E,$63C8,$69B6,$7000,$76A9,$7DB7,$8531,$8D1C
+
+; Play "You are my Sunshine"
+; arranged by Greg Dionne
+;
+; Adapted from Simon's original to be
+; less dependent on macro expansion
+
+; Notes
+C_	.equ	1
+Cs	.equ	2
+D_	.equ	3
+Ds	.equ	4
+E_	.equ	5
+F_	.equ	6
+Fs	.equ	7
+G_	.equ	8
+Gs	.equ	9
+A_	.equ	10
+As	.equ	11
+B_	.equ	12
+
+; Octaves
+O1	.equ	0*12
+O2	.equ	1*12
+O3	.equ	2*12
+O4	.equ	3*12
+O5	.equ	4*12
+O6	.equ	5*12
+O7	.equ	6*12
+O8	.equ	7*12
+
+; Rest
+quiet	.equ	0
+
+tempo
+	.byte	$ff
+zix
+	.byte	G_+O4, G_+O4	; you
+	.byte	G_+O4, G_+O4
+	.byte	G_+O4, G_+O4
+	.byte	C_+O5, Fs+O4	; are
+	.byte	C_+O5, Fs+O4
+	.byte	C_+O5, Fs+O4
+	.byte	D_+O5, F_+O4	; my
+	.byte	D_+O5, F_+O4
+	.byte	D_+O5, F_+O4
+	.byte	E_+O5, E_+O4	; sun
+	.byte	E_+O5, E_+O4
+	.byte	E_+O5, E_+O4
+	.byte	E_+O5, E_+O4	; sun
+	.byte	E_+O5, E_+O4
+	.byte	E_+O5, E_+O4
+	.byte	E_+O5, G_+O4	; shine
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4	; shine
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4	; shine
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+
+	.byte	E_+O5, G_+O4	; my
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	Ds+O5, Fs+O4	; on-
+	.byte	Ds+O5, Fs+O4
+	.byte	Ds+O5, Fs+O4
+	.byte	E_+O5, G_+O4	; ly
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	C_+O5, E_+O4	; sun
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4	; sun
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4	; shine
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4	; shine
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4	; shine
+	.byte	C_+O5, E_+O4
+	.byte	C_+O5, E_+O4
+
+	.byte	C_+O5, C_+O5	; you
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	D_+O5, B_+O4	; make
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4
+	.byte	E_+O5, As+O4	; me
+	.byte	E_+O5, As+O4
+	.byte	E_+O5, As+O4
+	.byte	F_+O5, A_+O4	; hap-
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4	; hap-
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4
+	.byte	A_+O5, C_+O5	; py
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5	; py
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5	; py
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+
+	.byte	A_+O5, C_+O5	; when
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	G_+O5, D_+O5	; skies
+	.byte	G_+O5, D_+O5
+	.byte	G_+O5, D_+O5
+	.byte	F_+O5, Ds+O5	; are
+	.byte	F_+O5, Ds+O5
+	.byte	F_+O5, Ds+O5
+	.byte	E_+O5, E_+O5	; gray
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; gray
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; gray
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; gray
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; gray
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+
+	.byte	C_+O5, C_+O5	; you'll
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	D_+O5, B_+O4	; nev-
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4
+	.byte	E_+O5, As+O4	; er
+	.byte	E_+O5, As+O4
+	.byte	E_+O5, As+O4
+	.byte	F_+O5, A_+O4	; know
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4	; know
+	.byte	F_+O5, A_+O4
+	.byte	F_+O5, A_+O4
+	.byte	A_+O5, C_+O5	; dear
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5	; dear
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5	; dear
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+
+	.byte	A_+O5, C_+O5	; how
+	.byte	A_+O5, C_+O5
+	.byte	A_+O5, C_+O5
+	.byte	G_+O5, D_+O5	; much
+	.byte	G_+O5, D_+O5
+	.byte	G_+O5, D_+O5
+	.byte	F_+O5, Ds+O5	; i
+	.byte	F_+O5, Ds+O5
+	.byte	F_+O5, Ds+O5
+	.byte	E_+O5, E_+O5	; love
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; love
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5
+	.byte	E_+O5, E_+O5	; you
+	.byte	C_+O5, E_+O5
+	.byte	C_+O5, E_+O5
+	.byte	C_+O5, E_+O5	; you
+	.byte	C_+O5, E_+O5
+	.byte	C_+O5, E_+O5
+	.byte	C_+O5, E_+O5	; you
+	.byte	C_+O5, E_+O5
+	.byte	C_+O5, E_+O5
+
+	.byte	quiet, quiet	; [rest]
+	.byte	quiet, quiet
+	.byte	quiet, quiet
+	.byte	C_+O5, C_+O5	; please
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	D_+O5, A_+O4	; don't
+	.byte	D_+O5, A_+O4
+	.byte	D_+O5, A_+O4
+	.byte	E_+O5, G_+O4	; take
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4	; take
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4	; take
+	.byte	E_+O5, G_+O4
+	.byte	E_+O5, G_+O4
+	.byte	F_+O5, B_+O4	; my
+	.byte	F_+O5, B_+O4
+	.byte	F_+O5, B_+O4
+	.byte	D_+O5, B_+O4	; sun
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4
+
+	.byte	D_+O5, B_+O4	; sun
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4	; shine
+	.byte	D_+O5, B_+O4
+	.byte	D_+O5, B_+O4
+	.byte	E_+O5, B_+O4	; a
+	.byte	E_+O5, B_+O4
+	.byte	E_+O5, B_+O4
+	.byte	C_+O5, C_+O5	; way
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5	; way
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5	; way
+	.byte	C_+O5, C_+O5
+	.byte	C_+O5, C_+O5
+	.byte	quiet, quiet	; way
+	.byte	quiet, quiet
+	.byte	quiet, quiet
+	.byte	quiet, quiet	; way
+	.byte	quiet, quiet
+	.byte	quiet, quiet
+
+endzix	.word	$ffff	;signal loop
