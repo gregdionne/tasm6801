@@ -2,6 +2,8 @@
 // Distributed under MIT License
 #include "tasmcliarguments.hpp"
 
+#include <cstdlib>
+
 static const char *const argUsage = "file1 [file2 [file3 ...]]\n\n";
 static const char *const argDescription =
     "\b can be used to assemble assembly "

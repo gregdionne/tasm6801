@@ -48,7 +48,7 @@ void Macro::doSubstitutions(Fetcher &fetcher) {
       fetcher.getChar();
     }
 
-    for (auto & definition : definitions) {
+    for (auto &definition : definitions) {
       std::string &id = definition.identifier;
       std::string &equ = definition.equivalence;
 
