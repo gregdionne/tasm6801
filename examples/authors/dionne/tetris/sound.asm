@@ -28,13 +28,13 @@ _dosnd	ldx	#_sounds
 	orab	#$24
 	stab	SBYTE		;clear sound byte
 	ldaa	#$7E		;load 'jmp' instruction opcode
-	staa	$4206		;store into TOF vector
+	staa	$4206		;store into output compare interrupt vector
 	ldx	#_ocfi		;load interrupt location
 	stx	$4207		;store as address to jump to
 	cli			;enable interrupts
-	ldaa	#$08		;enable TOF
-	staa	08
-	rts			;go back to BASIC...
+	ldaa	#$08		;enable output compare interrupt
+	staa	$08
+	rts
 
 _ocfi	ldx	SOUND		;increment sound pointer
 	inx			;
@@ -49,11 +49,11 @@ _ocfi	ldx	SOUND		;increment sound pointer
 	ldab	#$50		;multiply by delay value
 	mul			; (11.125kHz sample rate = 0.89MHz / 80)
 	addd	$09
-	bita 	$08		;read the TCSR
+	bita 	$08		;clear OCF by dummy read of the TCSR
 	std	$0B		;store into output compare register
 	rti
-_done	clr	0008		;disable the interrupt
-	rti			;return from interrupt (back to BASIC)
+_done	clr	$0008		;disable the interrupt
+	rti			;return from interrupt
 
 
 _sounds	.word _hasta, _slide, _illbet, _nicetry, _uhoh

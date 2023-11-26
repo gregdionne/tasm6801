@@ -170,6 +170,8 @@ void ObjWriter::writeC10(const TasmObject &obj) {
     }
 
     eofblock();
+
+    fclose(fc10);
   }
 }
 
