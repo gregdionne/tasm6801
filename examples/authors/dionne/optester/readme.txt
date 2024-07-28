@@ -26,16 +26,12 @@ The lower right portion of the screen is used as storage for
 the condition code register, as well as the current argument
 to the opcode.
 
-All opcodes involving single-byte data are tested exhaustively
-against all possible inputs of register data, argument data,
- and condition codes.
-
-Opcodes involving double-byte data are tested exhaustively with
-condition codes and the following (non-exhaustive) bit patterns 
-for source and data:
+All opcodes involving single-byte and double-byte data are tested
+exhaustively with condition codes and the following (non-exhaustive)
+bit patterns for source and data:
 
     0000  4000  8000  C000
     0001  4001  8001  C001
     3FFE  7FFE  BFFE  FFFE
     3FFF  7FFF  BFFF  FFFF
-             
+

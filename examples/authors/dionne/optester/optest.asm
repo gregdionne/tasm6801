@@ -23,6 +23,7 @@ curtab	.block	2
 curchk	.block	2
 chksum	.block	2
 chktmp	.block	2
+result	.block	2
 
 	.org	$4400
 
@@ -37,12 +38,16 @@ start
 
 _nxtop
 	bsr	evalop
+	ldx	result
+	cpx	#fail
+	brn	_done	; beq to stop
 	ldx	curtab
 	ldab	#8
 	abx
 	stx	curtab
 	cpx	#opend
 	blo	_nxtop
+_done
 	jmp	scrstat
 
 ; evaluate one opcode
@@ -91,6 +96,7 @@ _fail
 _skip
 	ldx	#skip
 _result
+	stx	result
 	ldab	#4
 	ldaa	,x
 	psha
@@ -259,7 +265,9 @@ chkinhd
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
+	std	args+2
 	psha
 	ldaa	ccr
 	tap
@@ -273,10 +281,12 @@ _opcode	.block	1
 	jsr	chka
 	pula
 	jsr	chka
-	inc	args+1
-	bne	_loop
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -300,8 +310,9 @@ _opcode	.block	1
 	pula
 	jsr	chka
 	inc	args
+	inc	args
 	ldab	args
-	cmpb	#$10
+	cmpb	#$20
 	bne	_loop
 	clr	args
 	jsr	nxtccr
@@ -378,7 +389,9 @@ chkimma
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
+	std	args+2
 	psha
 	stab	_opernd
 	ldaa	ccr
@@ -391,10 +404,12 @@ _opernd	.block	1
 	jsr	chka
 	pula
 	jsr	chka
-	inc	args+1
-	bne	_loop
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -405,7 +420,9 @@ chkimmb
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
+	std	args+2
 	staa	_opernd
 	ldaa	ccr
 	tap
@@ -417,9 +434,11 @@ _opernd	.block	1
 	pula
 	jsr	chka
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
-	inc	args+1
-	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -430,7 +449,8 @@ chkdira
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	psha
 	stab	chktmp
 	ldaa	ccr
@@ -443,10 +463,12 @@ _opernd	.byte	chktmp
 	jsr	chka
 	pula
 	jsr	chka
-	inc	args+1
-	bne	_loop
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -457,7 +479,8 @@ chkdirb
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	staa	chktmp
 	ldaa	ccr
 	tap
@@ -469,9 +492,11 @@ _opernd	.byte	chktmp
 	pula
 	jsr	chka
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
-	inc	args+1
-	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -482,7 +507,8 @@ chkidxa
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	psha
 	ldx	#_chkdat
 	stab	,x
@@ -497,10 +523,12 @@ _opcode	.block	1
 	jsr	chka
 	pula
 	jsr	chka
-	inc	args+1
-	bne	_loop
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -512,7 +540,8 @@ chkidxb
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	ldx	#_chkdat
 	staa	,x
 	ldaa	ccr
@@ -525,9 +554,11 @@ _opcode	.block	1
 	pula
 	jsr	chka
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
-	inc	args+1
-	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -539,7 +570,8 @@ chkexta
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	psha
 	stab	_chkdat
 	ldaa	ccr
@@ -552,10 +584,12 @@ _opcode	.block	1
 	jsr	chka
 	pula
 	jsr	chka
-	inc	args+1
-	bne	_loop
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -567,7 +601,8 @@ chkextb
 	jsr	chkinit
 	staa	_opcode
 _loop
-	ldd	args
+	ldab	args
+	jsr	wrdargd
 	staa	_chkdat
 	ldaa	ccr
 	tap
@@ -579,9 +614,11 @@ _opcode	.block	1
 	pula
 	jsr	chka
 	inc	args
+	inc	args
+	ldab	args
+	cmpb	#$20
 	bne	_loop
-	inc	args+1
-	bne	_loop
+	clr	args
 	jsr	nxtccr
 	bne	_loop
 	rts
@@ -1435,8 +1472,8 @@ optable
 	.byte	$01, "NOP ", inhp, $41, $00
 	.byte	$02, "sexa", inha, $6F, $B4
 	.byte	$03, "seta", inha, $71, $34
-	.byte	$04, "LSRD", inhd, $41, $36
-	.byte	$05, "LSLD", inhd, $26, $66
+	.byte	$04, "LSRD", inhd, $90, $58
+	.byte	$05, "LSLD", inhd, $3F, $DE
 	.byte	$06, "TAP ", inha, $74, $EC
 	.byte	$07, "TPA ", inha, $C4, $D4
 	.byte	$08, "INX ", inhx, $EC, $E2
@@ -1449,18 +1486,18 @@ optable
 	.byte	$0E, "CLI ", xxxx, $00, $00
 	.byte	$0F, "SEI ", xxxx, $00, $00
 
-	.byte	$10, "SBA ", inhd, $41, $4A
-	.byte	$11, "CBA ", inhd, $75, $3E
-	.byte	$12, "scba", inhd, $07, $14
-	.byte	$13, "sdba", inhd, $9A, $F8
+	.byte	$10, "SBA ", inhd, $05, $84
+	.byte	$11, "CBA ", inhd, $65, $54
+	.byte	$12, "scba", inhd, $76, $F4
+	.byte	$13, "sdba", inhd, $03, $B8
 	.byte	$14, "tdab", itab, $11, $C0 ; inhd = $E4B8
 	.byte	$15, "tdba", itba, $11, $C0 ; inhd = $613E
 	.byte	$16, "TAB ", itab, $EA, $82
 	.byte	$17, "TBA ", itba, $EA, $82
-	.byte	$18, "aba ", inhd, $23, $10
+	.byte	$18, "aba ", inhd, $67, $AE
 	.byte	$19, "DAA ", inha, $C9, $1A
-	.byte	$1A, "aba ", inhd, $23, $10
-	.byte	$1B, "ABA ", inhd, $38, $50
+	.byte	$1A, "aba ", inhd, $67, $AE
+	.byte	$1B, "ABA ", inhd, $01, $C8
 	.byte	$1C, "tdab", itab, $11, $C0 ; inhd = $E4B8
 	.byte	$1D, "tdbc", itba, $81, $D8 ; inhd = $8126
 	.byte	$1E, "tab ", itab, $EA, $82 ; inhd = $BA94
@@ -1496,7 +1533,7 @@ optable
 	.byte	$3A, "ABX ", xxxx, $00, $00
 	.byte	$3B, "RTI ", xxxx, $00, $00
 	.byte	$3C, "PSHX", xxxx, $00, $00
-	.byte	$3D, "MUL ", inhd, $58, $C6
+	.byte	$3D, "MUL ", inhd, $40, $70
 	.byte	$3E, "WAI ", xxxx, $00, $00
 	.byte	$3F, "SWI ", xxxx, $00, $00
 
@@ -1580,68 +1617,68 @@ optable
 	.byte	$6F, "CLR ", indx, $D7, $88
 	.byte	$7F, "CLR ", extn, $D7, $88
 
-	.byte	$80, "SUBA", imma, $27, $7A
-	.byte	$90, "SUBA", dira, $27, $7A
-	.byte	$A0, "SUBA", idxa, $27, $7A
-	.byte	$B0, "SUBA", exta, $27, $7A
-	.byte	$C0, "SUBB", immb, $27, $7A
-	.byte	$D0, "SUBB", dirb, $27, $7A
-	.byte	$E0, "SUBB", idxb, $27, $7A
-	.byte	$F0, "SUBB", extb, $27, $7A
+	.byte	$80, "SUBA", imma, $58, $44
+	.byte	$90, "SUBA", dira, $58, $44
+	.byte	$A0, "SUBA", idxa, $58, $44
+	.byte	$B0, "SUBA", exta, $58, $44
+	.byte	$C0, "SUBB", immb, $E7, $DA
+	.byte	$D0, "SUBB", dirb, $E7, $DA
+	.byte	$E0, "SUBB", idxb, $E7, $DA
+	.byte	$F0, "SUBB", extb, $E7, $DA
 
-	.byte	$81, "CMPA", imma, $78, $2C
-	.byte	$91, "CMPA", dira, $78, $2C
-	.byte	$A1, "CMPA", idxa, $78, $2C
-	.byte	$B1, "CMPA", exta, $78, $2C
-	.byte	$C1, "CMPB", immb, $78, $2C
-	.byte	$D1, "CMPB", dirb, $78, $2C
-	.byte	$E1, "CMPB", idxb, $78, $2C
-	.byte	$F1, "CMPB", extb, $78, $2C
+	.byte	$81, "CMPA", imma, $4C, $66
+	.byte	$91, "CMPA", dira, $4C, $66
+	.byte	$A1, "CMPA", idxa, $4C, $66
+	.byte	$B1, "CMPA", exta, $4C, $66
+	.byte	$C1, "CMPB", immb, $27, $B4
+	.byte	$D1, "CMPB", dirb, $27, $B4
+	.byte	$E1, "CMPB", idxb, $27, $B4
+	.byte	$F1, "CMPB", extb, $27, $B4
 
-	.byte	$82, "SBCA", imma, $0F, $84
-	.byte	$92, "SBCA", dira, $0F, $84
-	.byte	$A2, "SBCA", idxa, $0F, $84
-	.byte	$B2, "SBCA", exta, $0F, $84
-	.byte	$C2, "SBCB", immb, $0F, $84
-	.byte	$D2, "SBCB", dirb, $0F, $84
-	.byte	$E2, "SBCB", idxb, $0F, $84
-	.byte	$F2, "SBCB", extb, $0F, $84
+	.byte	$82, "SBCA", imma, $33, $66
+	.byte	$92, "SBCA", dira, $33, $66
+	.byte	$A2, "SBCA", idxa, $33, $66
+	.byte	$B2, "SBCA", exta, $33, $66
+	.byte	$C2, "SBCB", immb, $CB, $E4
+	.byte	$D2, "SBCB", dirb, $CB, $E4
+	.byte	$E2, "SBCB", idxb, $CB, $E4
+	.byte	$F2, "SBCB", extb, $CB, $E4
 
-	.byte	$83, "SUBD", immd, $1B, $F7
-	.byte	$93, "SUBD", dird, $1B, $F7
-	.byte	$A3, "SUBD", idxd, $1B, $F7
-	.byte	$B3, "SUBD", extd, $1B, $F7
-	.byte	$C3, "ADDD", immd, $C4, $93
-	.byte	$D3, "ADDD", dird, $C4, $93
-	.byte	$E3, "ADDD", idxd, $C4, $93
-	.byte	$F3, "ADDD", extd, $C4, $93
+	.byte	$83, "SUBD", immd, $11, $6A
+	.byte	$93, "SUBD", dird, $11, $6A
+	.byte	$A3, "SUBD", idxd, $11, $6A
+	.byte	$B3, "SUBD", extd, $11, $6A
+	.byte	$C3, "ADDD", immd, $18, $5A
+	.byte	$D3, "ADDD", dird, $18, $5A
+	.byte	$E3, "ADDD", idxd, $18, $5A
+	.byte	$F3, "ADDD", extd, $18, $5A
 
-	.byte	$84, "ANDA", imma, $35, $8C
-	.byte	$94, "ANDA", dira, $35, $8C
-	.byte	$A4, "ANDA", idxa, $35, $8C
-	.byte	$B4, "ANDA", exta, $35, $8C
-	.byte	$C4, "ANDB", immb, $35, $8C
-	.byte	$D4, "ANDB", dirb, $35, $8C
-	.byte	$E4, "ANDB", idxb, $35, $8C
-	.byte	$F4, "ANDB", extb, $35, $8C
+	.byte	$84, "ANDA", imma, $F6, $E2
+	.byte	$94, "ANDA", dira, $F6, $E2
+	.byte	$A4, "ANDA", idxa, $F6, $E2
+	.byte	$B4, "ANDA", exta, $F6, $E2
+	.byte	$C4, "ANDB", immb, $F6, $E2
+	.byte	$D4, "ANDB", dirb, $F6, $E2
+	.byte	$E4, "ANDB", idxb, $F6, $E2
+	.byte	$F4, "ANDB", extb, $F6, $E2
 
-	.byte	$85, "BITA", imma, $5C, $7E
-	.byte	$95, "BITA", dira, $5C, $7E
-	.byte	$A5, "BITA", idxa, $5C, $7E
-	.byte	$B5, "BITA", exta, $5C, $7E
-	.byte	$C5, "BITB", immb, $5C, $7E
-	.byte	$D5, "BITB", dirb, $5C, $7E
-	.byte	$E5, "BITB", idxb, $5C, $7E
-	.byte	$F5, "BITB", extb, $5C, $7E
+	.byte	$85, "BITA", imma, $98, $2E
+	.byte	$95, "BITA", dira, $98, $2E
+	.byte	$A5, "BITA", idxa, $98, $2E
+	.byte	$B5, "BITA", exta, $98, $2E
+	.byte	$C5, "BITB", immb, $8A, $76
+	.byte	$D5, "BITB", dirb, $8A, $76
+	.byte	$E5, "BITB", idxb, $8A, $76
+	.byte	$F5, "BITB", extb, $8A, $76
 
-	.byte	$86, "LDAA", imma, $D8, $F0
-	.byte	$96, "LDAA", dira, $D8, $F0
-	.byte	$A6, "LDAA", idxa, $D8, $F0
-	.byte	$B6, "LDAA", exta, $D8, $F0
-	.byte	$C6, "LDAB", immb, $D8, $F0
-	.byte	$D6, "LDAB", dirb, $D8, $F0
-	.byte	$E6, "LDAB", idxb, $D8, $F0
-	.byte	$F6, "LDAB", extb, $D8, $F0
+	.byte	$86, "LDAA", imma, $52, $66
+	.byte	$96, "LDAA", dira, $52, $66
+	.byte	$A6, "LDAA", idxa, $52, $66
+	.byte	$B6, "LDAA", exta, $52, $66
+	.byte	$C6, "LDAB", immb, $27, $2E
+	.byte	$D6, "LDAB", dirb, $27, $2E
+	.byte	$E6, "LDAB", idxb, $27, $2E
+	.byte	$F6, "LDAB", extb, $27, $2E
 
 	.byte	$87, "I87 ", stai, $D0, $5A
 	.byte	$97, "STAA", stad, $EA, $82
@@ -1652,41 +1689,41 @@ optable
 	.byte	$E7, "STAB", stbx, $EA, $82
 	.byte	$F7, "STAB", stbe, $EA, $82
 
-	.byte	$88, "EORA", imma, $20, $E4
-	.byte	$98, "EORA", dira, $20, $E4
-	.byte	$A8, "EORA", idxa, $20, $E4
-	.byte	$B8, "EORA", exta, $20, $E4
-	.byte	$C8, "EORB", immb, $20, $E4
-	.byte	$D8, "EORB", dirb, $20, $E4
-	.byte	$E8, "EORB", idxb, $20, $E4
-	.byte	$F8, "EORB", extb, $20, $E4
+	.byte	$88, "EORA", imma, $21, $3C
+	.byte	$98, "EORA", dira, $21, $3C
+	.byte	$A8, "EORA", idxa, $21, $3C
+	.byte	$B8, "EORA", exta, $21, $3C
+	.byte	$C8, "EORB", immb, $21, $3C
+	.byte	$D8, "EORB", dirb, $21, $3C
+	.byte	$E8, "EORB", idxb, $21, $3C
+	.byte	$F8, "EORB", extb, $21, $3C
 
-	.byte	$89, "ADCA", imma, $15, $BA
-	.byte	$99, "ADCA", dira, $15, $BA
-	.byte	$A9, "ADCA", idxa, $15, $BA
-	.byte	$B9, "ADCA", exta, $15, $BA
-	.byte	$C9, "ADCB", immb, $15, $BA
-	.byte	$D9, "ADCB", dirb, $15, $BA
-	.byte	$E9, "ADCB", idxb, $15, $BA
-	.byte	$F9, "ADCB", extb, $15, $BA
+	.byte	$89, "ADCA", imma, $30, $7A
+	.byte	$99, "ADCA", dira, $30, $7A
+	.byte	$A9, "ADCA", idxa, $30, $7A
+	.byte	$B9, "ADCA", exta, $30, $7A
+	.byte	$C9, "ADCB", immb, $30, $7A
+	.byte	$D9, "ADCB", dirb, $30, $7A
+	.byte	$E9, "ADCB", idxb, $30, $7A
+	.byte	$F9, "ADCB", extb, $30, $7A
 
-	.byte	$8A, "ORAA", imma, $9C, $4A
-	.byte	$9A, "ORAA", dira, $9C, $4A
-	.byte	$AA, "ORAA", idxa, $9C, $4A
-	.byte	$BA, "ORAA", exta, $9C, $4A
-	.byte	$CA, "ORAB", immb, $9C, $4A
-	.byte	$DA, "ORAB", dirb, $9C, $4A
-	.byte	$EA, "ORAB", idxb, $9C, $4A
-	.byte	$FA, "ORAB", extb, $9C, $4A
+	.byte	$8A, "ORAA", imma, $2E, $EA
+	.byte	$9A, "ORAA", dira, $2E, $EA
+	.byte	$AA, "ORAA", idxa, $2E, $EA
+	.byte	$BA, "ORAA", exta, $2E, $EA
+	.byte	$CA, "ORAB", immb, $2E, $EA
+	.byte	$DA, "ORAB", dirb, $2E, $EA
+	.byte	$EA, "ORAB", idxb, $2E, $EA
+	.byte	$FA, "ORAB", extb, $2E, $EA
 
-	.byte	$8B, "ADDA", imma, $EE, $74
-	.byte	$9B, "ADDA", dira, $EE, $74
-	.byte	$AB, "ADDA", idxa, $EE, $74
-	.byte	$BB, "ADDA", exta, $EE, $74
-	.byte	$CB, "ADDB", immb, $EE, $74
-	.byte	$DB, "ADDB", dirb, $EE, $74
-	.byte	$EB, "ADDB", idxb, $EE, $74
-	.byte	$FB, "ADDB", extb, $EE, $74
+	.byte	$8B, "ADDA", imma, $C5, $FC
+	.byte	$9B, "ADDA", dira, $C5, $FC
+	.byte	$AB, "ADDA", idxa, $C5, $FC
+	.byte	$BB, "ADDA", exta, $C5, $FC
+	.byte	$CB, "ADDB", immb, $C5, $FC
+	.byte	$DB, "ADDB", dirb, $C5, $FC
+	.byte	$EB, "ADDB", idxb, $C5, $FC
+	.byte	$FB, "ADDB", extb, $C5, $FC
 
 	.byte	$8C, "CPX ", immx, $E5, $0C
 	.byte	$9C, "CPX ", dirx, $E5, $0C
@@ -1719,7 +1756,7 @@ optable
 	.byte	$9F, "STS ", xxxx, $00, $00
 	.byte	$AF, "STS ", xxxx, $00, $00
 	.byte	$BF, "STS ", xxxx, $00, $00
-	.byte	$CF, "ICF ", stxi, $78, $92
+	.byte	$CF, "ICF ", stxi, $31, $CA
 	.byte	$DF, "STX ", stxd, $ED, $DE
 	.byte	$EF, "STX ", xxxx, $00, $00
 	.byte	$FF, "STX ", stxe, $ED, $DE
